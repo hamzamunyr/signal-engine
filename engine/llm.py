@@ -45,6 +45,7 @@ SCHEMA = """{
  "resolution_confidence": "high|medium|low|unresolved",
  "person_name": "name of the poster/decision maker if stated, else null",
  "is_b2b": true|false,
+ "country": "ISO-2 country of the company (US, GB, IN...) from location, currency, city or domain clues; UNKNOWN if no clue",
  "employee_estimate": "1-10|11-50|51-200|201-1000|1000+|unknown",
  "intent_score": 1-10,
  "icp_fit_score": 1-10,
@@ -62,7 +63,8 @@ GUIDE = (
     "industry, country); unknown size from a small founder-led business usually fits small-company ICPs. "
     "resolution_confidence: high = company name and domain stated; medium = company name stated or clearly "
     "inferable; low = only a vague description; unresolved = no company. employee_estimate: use clues such as "
-    "funding stage (pre-seed/seed usually 1-10 or 11-50), 'solo founder', 'my small agency', number of open roles."
+    "funding stage (pre-seed/seed usually 1-10 or 11-50), 'solo founder', 'my small agency', number of open roles. "
+    "Score intent 9 or 10 only when the text itself shows a buyer actively looking for or needing this kind of service now."
 )
 
 
@@ -111,7 +113,9 @@ def select_batch() -> list[dict]:
             select m.id as mid, m.signal_ids, r.* from client_matches m join raw_items r on r.id = m.item_id
             where m.client=%s and m.llm_scored_at is null and m.queue in ('new','lane_a')
               and m.created_at > now() - interval '5 days'
-            order by (m.lane='A') desc, m.rule_score desc, m.id desc limit %s""", (c.name, cap))
+            order by case m.trigger when 'explicit_intent' then 0 when 'churn' then 1 when 'pain' then 2
+                                    when 'hiring' then 3 when 'leadership' then 4 when 'funding' then 5 else 6 end,
+                     m.rule_score desc, m.id desc limit %s""", (c.name, cap))
         for r in rows:
             out.append({"mid": r["mid"], "client": c.name, "prompt": build_prompt(c.cfg, r, r["signal_ids"])})
     return out
@@ -222,8 +226,13 @@ def decide(cfg: dict, m: dict, d: dict | None) -> dict:
         lo = {"1-10": 1, "11-50": 11, "51-200": 51, "201-1000": 201, "1000+": 1001}[size]
         if lo > int(icp["max_employees"]):
             reason = f"too big ({size})"
-    if not reason and intent < 5:
-        reason = f"weak intent ({intent:.0f})"
+    countries = [c.upper() for c in (icp.get("countries") or [])]
+    country = str(d.get("country") or "UNKNOWN").upper()
+    if not reason and countries and country not in countries:
+        reason = f"outside target countries ({country})"
+    min_intent = float(cfg.get("min_intent", 0) or 0)
+    if not reason and intent < max(5, min_intent):
+        reason = f"intent {intent:.0f} below {max(5, min_intent):g}"
     if not reason and age > g["stop_after"]:
         reason = "stale"
     conf = d.get("resolution_confidence") or "unresolved"

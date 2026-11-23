@@ -1,0 +1,45 @@
+name: score on CPU (self-hosted open-source LLM)
+on:
+  schedule:
+    - cron: "40 1 * * *"   # 06:40 Pakistan time: scores whatever the Kaggle GPU run did not
+  workflow_dispatch:
+    inputs:
+      limit: { description: "Items per shard", default: "100" }
+concurrency: { group: engine-cpu-score, cancel-in-progress: false }
+env:
+  SUPABASE_REF: ${{ vars.SUPABASE_REF }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  SHEET_WEBHOOK: ${{ secrets.SHEET_WEBHOOK }}
+  SHEET_TOKEN: ${{ secrets.SHEET_TOKEN }}
+  CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt huggingface_hub
+      - run: pip install llama-cpp-python --prefer-binary --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: qwen25-3b-q4km
+      - run: python -m engine score-cpu --shard ${{ matrix.shard }} --shards 4 --limit ${{ inputs.limit || '100' }} --minutes 300
+  export:
+    needs: score
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m engine resolve
+      - run: python -m engine export
+      - run: python -m engine health

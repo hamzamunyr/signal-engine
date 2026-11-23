@@ -43,6 +43,11 @@ def main(argv: list[str]) -> int:
     elif cmd == "score-pull":
         from .llm import kaggle_ready, wait_and_pull
         res = wait_and_pull() if kaggle_ready() else {"skipped": "no Kaggle credentials"}
+    elif cmd == "score-cpu":
+        from .cpu_llm import run
+        kv = dict(zip(args[::2], args[1::2]))
+        res = run(shard=int(kv.get("--shard", 0)), shards=int(kv.get("--shards", 1)),
+                  limit=int(kv.get("--limit", 120)), minutes=float(kv.get("--minutes", 300)))
     elif cmd == "health":
         from .maintenance import health_report
         print(health_report())
