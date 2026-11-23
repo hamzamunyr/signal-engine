@@ -117,7 +117,7 @@ def select_batch() -> list[dict]:
 
 
 def kaggle_ready() -> bool:
-    return bool((os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY")) or os.environ.get("KAGGLE_API_TOKEN"))
+    return bool(os.environ.get("KAGGLE_API_TOKEN") or (os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY")))
 
 
 def _kaggle(*args: str, check=True) -> str:
@@ -133,7 +133,7 @@ def push() -> dict:
     if not batch:
         log.info("nothing to score")
         return {"pushed": 0}
-    user = os.environ["KAGGLE_USERNAME"]
+    user = os.environ.get("KAGGLE_USERNAME") or "hamzamunyr"
     work = ROOT / "build" / "kernel"
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
@@ -154,7 +154,7 @@ def push() -> dict:
 
 
 def wait_and_pull(max_wait_min: int = 200) -> dict:
-    user = os.environ["KAGGLE_USERNAME"]
+    user = os.environ.get("KAGGLE_USERNAME") or "hamzamunyr"
     ref = f"{user}/{KERNEL_SLUG}"
     t0 = time.time()
     status = ""
