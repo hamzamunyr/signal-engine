@@ -1,7 +1,5 @@
-name: score on CPU (self-hosted open-source LLM)
+name: score on CPU (manual only; 3B model too weak to judge intent)
 on:
-  schedule:
-    - cron: "40 1 * * *"   # 06:40 Pakistan time: scores whatever the Kaggle GPU run did not
   workflow_dispatch:
     inputs:
       limit: { description: "Items per shard", default: "100" }
