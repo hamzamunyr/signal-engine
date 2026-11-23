@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 
 from . import db
 from .config import Client, clients
@@ -17,6 +18,25 @@ LANE_A_GROUPS = {"explicit_intent", "churn", "first_party"}
 SENSITIVE_KINDS = {"post", "comment"}
 BOT_AUTHORS = {"automoderator", "[deleted]", "sneakpeekbot", "remindmebot", "savevideo", "visualmod"}
 BOT_TEXT = ("i am a bot", "you must first be an active community member", "this action was performed automatically")
+
+
+AMOUNT_RE = re.compile(r"([\d.,]+)\s*(k|thousand|m|million|mn|b|billion)?", re.I)
+
+
+def amount_usd(meta: dict) -> float | None:
+    """Rough amount from news meta ('$4.5M', '£1.8 million') or Form D (dollars)."""
+    raw = meta.get("amount")
+    if raw in (None, ""):
+        return None
+    m = AMOUNT_RE.search(str(raw).replace(",", ""))
+    if not m:
+        return None
+    try:
+        v = float(m.group(1))
+    except ValueError:
+        return None
+    unit = (m.group(2) or "").lower()
+    return v * {"k": 1e3, "thousand": 1e3, "m": 1e6, "million": 1e6, "mn": 1e6, "b": 1e9, "billion": 1e9}.get(unit, 1)
 
 
 def _age_days(published, first_seen) -> float:
@@ -60,7 +80,7 @@ def match_row(c: Client, row: dict) -> dict | None:
     if top.group in LANE_A_GROUPS and age <= 2 and raw >= 9 and kind != "comment":
         lane = "A"
     elif top.group == "funding" and age <= 2 and kind in ("news", "filing") and (
-            "form_d_small" in flags or any(h.id in (42, 43) for h in hits)):
+            "form_d_small" in flags or any(h.id in (42, 43) for h in hits)) and (amount_usd(meta) or 0) <= 15e6:
         lane = "A"
     return {"signal_ids": sorted(h.id for h in hits), "trigger": top.group, "rule_score": score, "lane": lane}
 
