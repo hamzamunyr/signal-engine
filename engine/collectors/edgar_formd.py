@@ -24,6 +24,7 @@ SKIP_INDUSTRIES = {
     "oil and gas", "coal mining", "electric utilities", "investing", "lodging and conventions",
     "restaurants", "construction", "agriculture", "airlines and airports", "other energy",
 }
+VEHICLE_RE = re.compile(r"\b(spv|fund|funds|feeder|co-?invest|investors?|capital partners|holdings? lp|lp|l\.p\.|series \d+|trust)\b", re.I)
 HEAD = {"User-Agent": BOT_UA, "Accept-Encoding": "gzip, deflate"}
 LINK_RE = re.compile(r"/Archives/edgar/data/(\d+)/(\d{18})/")
 
@@ -108,6 +109,8 @@ def collect():
             except Exception as ex:
                 errors.append(f"primary_doc {cik}/{acc}: {ex}")
                 continue
+            if VEHICLE_RE.search(d.get("entity") or ""):
+                continue  # investment vehicles, not operating companies
             if d["industry"].lower() in SKIP_INDUSTRIES or (d.get("entity_type") or "").lower().startswith("limited partnership"):
                 continue
             amount = _num(d["amount"]) or _num(d["sold"])
