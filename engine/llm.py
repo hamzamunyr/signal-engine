@@ -53,6 +53,8 @@ SCHEMA = """{
  "evidence_quote": "exact words from the text, max 25 words",
  "decision_maker_role": "who to contact",
  "recommended_angle": "LinkedIn connection note to the decision maker, max 280 characters, plain and specific to the signal, no pitch",
+ "can_sell_offer": "yes|maybe|no: can this company realistically buy the OFFER now (needs more B2B pipeline, can afford a small agency, not a competitor)",
+ "can_sell_reason": "one short sentence why",
  "reject_reason": "short reason if is_lead is false, else null"
 }"""
 
@@ -233,6 +235,8 @@ def decide(cfg: dict, m: dict, d: dict | None) -> dict:
     min_intent = float(cfg.get("min_intent", 0) or 0)
     if not reason and intent < max(5, min_intent):
         reason = f"intent {intent:.0f} below {max(5, min_intent):g}"
+    if not reason and str(d.get("can_sell_offer", "yes")).lower().startswith("no"):
+        reason = "cannot sell offer: " + str(d.get("can_sell_reason") or "")[:120]
     if not reason and age > g["stop_after"]:
         reason = "stale"
     conf = d.get("resolution_confidence") or "unresolved"
