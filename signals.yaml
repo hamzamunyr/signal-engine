@@ -56,13 +56,13 @@ vocab:
 signals:
   # ---------------- A: explicit intent ----------------
   1:  {name: Looking for an agency, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: ["{seek}", ["agency", "agencies", "firm", "service", "partner", "provider", "company"], "{offer_terms}"]}}
+       match: {near: ["{seek}", "{offer_terms}", 6], all_of: ["{provider}"]}}
   2:  {name: Looking for a lead-generation company, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: ["{seek}", ["lead generation", "lead gen", "leadgen", "lead-gen", "b2b leads"]]}}
+       match: {near: ["{seek}", ["lead generation", "lead gen", "leadgen", "lead-gen", "b2b leads"], 5]}}
   3:  {name: Looking for an outbound agency, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: ["{seek}", ["outbound", "cold email", "cold outreach", "cold calling", "cold call", "email outreach"], "{provider}"]}}
+       match: {near: ["{seek}", ["outbound", "cold email", "cold outreach", "cold calling", "cold call", "email outreach"], 5], all_of: ["{provider}"]}}
   4:  {name: Looking for appointment setters, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: ["{seek}", ["appointment setter", "appointment setters", "appointment setting", "appointment-setting", "meeting setter", "booking meetings for"]]}}
+       match: {near: ["{seek}", ["appointment setter", "appointment setters", "appointment setting", "appointment-setting", "meeting setter", "setters"], 5]}}
   5:  {name: Looking for an SDR agency, group: explicit_intent, status: full, kinds: [post, comment],
        match: {any: ["outsourced sdr", "outsourced sdrs", "sdr as a service", "sdr agency", "outsource our sdr",
                      "outsourcing sdr", "fractional sdr", "outsourced bdr", "outsource sdr", "outsource bdr",
@@ -72,15 +72,16 @@ signals:
                          "recommend a tool", "tool recommendation", "what do you use for", "what are you using for",
                          "best crm", "best platform", "which platform"], "{tool_terms}"]}}
   7:  {name: Requesting vendor recommendations, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: [["can anyone recommend", "vendor recommendation", "recommend a vendor", "recommend a company",
-                         "recommend an agency", "looking for a vendor", "any recommendations for", "who would you recommend",
-                         "who do you recommend"], "{offer_terms}"]}}
+       match: {near: [["can anyone recommend", "vendor recommendation", "recommend a vendor", "recommend a company",
+                       "recommend an agency", "recommend a good", "looking for a vendor", "any recommendations for",
+                       "who would you recommend", "who do you recommend", "recommendations on"], "{offer_terms}", 8]}}
   8:  {name: Asking for pricing, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: [["how much", "what does it cost", "cost", "pricing", "price", "charge", "rates", "retainer",
-                         "per meeting", "per lead", "budget"], "{offer_terms}", "{provider}"]}}
+       match: {near: [["how much", "what does", "what do you pay", "what should i pay", "typical cost", "average cost",
+                       "fair price", "reasonable price", "pricing for", "cost of", "rates for", "quote for"], "{offer_terms}", 8],
+               all_of: ["{provider}", ["re:\\?"]]}}
   9:  {name: Comparing service providers, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: [["re:\\bvs\\.?\\b", "versus", "which is better", "which agency", "compare", "comparing",
-                         "or should i"], "{offer_terms}"]}}
+       match: {all_of: [["re:\\bvs\\.?\\b", "versus", "which is better", "which agency", "which one should", "which company"],
+                        "{offer_terms}", ["agency", "agencies", "provider", "service", "company", "firm"], ["re:\\?"]]}}
   10: {name: Asking for alternatives to a competitor, group: explicit_intent, status: full, kinds: [post, comment],
        match: {all_of: [["alternative to", "alternatives to", "switching from", "switch from", "replace",
                          "replacement for", "instead of", "moving away from", "leave", "leaving"], "{competitors}"]}}
@@ -153,9 +154,10 @@ signals:
   27: {name: Comments on industry posts, group: community, status: partial, kinds: [comment],
        match: {all_of: ["{industry_terms}", ["we ", "our ", "i run", "my agency", "my company", "my business"]]}}
   28: {name: Shares industry insights, group: community, status: partial, built: false, kinds: [], note: "LinkedIn search coverage only"}
-  29: {name: Asks questions about a solution, group: explicit_intent, status: full, kinds: [post, comment],
-       match: {all_of: [["how do", "how to", "should i", "is it worth", "does anyone", "what's the best",
-                         "what is the best", "does it work", "do they work", "is it legit"], "{offer_terms}"]}}
+  29: {name: Asks questions about a solution, group: community, status: full, kinds: [post, comment],
+       match: {near: [["how do", "should i", "is it worth", "does anyone", "what's the best", "what is the best",
+                       "does it work", "do they work", "is it legit", "has anyone tried", "anyone tried"], "{offer_terms}", 8],
+               all_of: [["re:\\?"]]}}
   30: {name: Engages with case studies, group: competitor, status: partial, built: false, kinds: [], note: "LinkedIn, semi-manual weekly"}
   31: {name: Discusses a relevant business problem, group: pain, status: full, kinds: [post, comment],
        match: {any: ["{pain_terms}"]}}
@@ -317,8 +319,8 @@ signals:
 
   # ---------------- N: community ----------------
   102: {name: Asking for recommendations in a community, group: explicit_intent, status: full, kinds: [post, comment],
-        match: {all_of: [["any recommendations", "recommendations for", "can anyone recommend", "who do you recommend",
-                          "who do you use", "who would you recommend", "suggestions for"], "{offer_or_tools}"]}}
+        match: {near: [["any recommendations", "recommendations for", "can anyone recommend", "who do you recommend",
+                        "who do you use", "who would you recommend", "suggestions for", "recommend a good"], "{offer_or_tools}", 8]}}
   103: {name: Asking technical implementation questions, group: community, status: full, kinds: [post, comment],
         match: {all_of: [["how do i set up", "how to set up", "setting up", "configure", "warm up", "warmup", "dkim",
                           "spf", "dmarc", "sequence", "integrate", "connect"], "{tool_terms}"]}}
@@ -326,11 +328,10 @@ signals:
         match: {any: ["white label partner", "white-label partner", "white label agency", "white-label agency",
                       "partner agency", "referral partner", "agency partner", "looking for a partner to"]}}
   105: {name: Seeking a specialist or contractor, group: explicit_intent, status: full, kinds: [post, comment],
-        match: {all_of: [["looking for a freelancer", "need a freelancer", "hire a freelancer", "need a contractor",
-                          "looking for a contractor", "looking for an expert", "need an expert", "hire an expert",
-                          "looking for someone to", "need someone to", "looking for someone who", "[hiring]", "[task]"],
-                         "{offer_or_tools}"]}}
-
+        match: {near: [["looking for a freelancer", "need a freelancer", "hire a freelancer", "need a contractor",
+                        "looking for a contractor", "looking for an expert", "need an expert", "hire an expert",
+                        "looking for someone to", "need someone to", "looking for someone who", "[hiring]", "[task]"],
+                       "{offer_or_tools}", 10]}}
   # ---------------- O: timing ----------------
   106: {name: New company formation, group: new_company, status: partial, kinds: [filing, launch],
         match: {computed_any: [form_d_small, new_company_listing, yc_batch]}}

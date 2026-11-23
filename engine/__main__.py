@@ -29,7 +29,7 @@ def main(argv: list[str]) -> int:
         res = run(names)
     elif cmd == "match":
         from .match import run
-        res = run()
+        res = run(rebuild="--rebuild" in args)
     elif cmd == "export":
         from .export import run
         res = run(include_unscored=True if "--unscored" in args else None)

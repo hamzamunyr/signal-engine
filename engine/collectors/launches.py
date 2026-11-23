@@ -26,7 +26,8 @@ def collect():
     items: list[Item] = []
     for label, url in FEEDS.items():
         try:
-            r = http.get(url, browser=True, timeout=30, retries=1)
+            r = http.get(url, browser=True, timeout=30, retries=1,
+                         headers={"Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5"})
             entries = feedparser.parse(r.content).entries
         except Exception as e:
             errors.append(f"{label}: {e}")

@@ -14,6 +14,7 @@ from ..item import Item
 from ..util import clean_text, parse_date
 
 NAME = "news"
+RSS_ACCEPT = "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5"
 
 GLOBAL_QUERIES = [
     '"raises" "pre-seed"', '"pre-seed round"', '"seed round" raises', '"raises" seed startup',
@@ -30,8 +31,6 @@ FEEDS = {
     "crunchbase_news": "https://news.crunchbase.com/feed/",
     "eu_startups": "https://www.eu-startups.com/feed/",
     "prnewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
-    "globenewswire": "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies",
-    "globenewswire_private": "https://www.globenewswire.com/RssFeed/orgclass/2/feedTitle/GlobeNewswire%20-%20News%20about%20Private%20Companies",
     "businesswire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWQ==",
     "accesswire": "https://www.accesswire.com/users/newswire/rss",
 }
@@ -55,7 +54,7 @@ def guess_company(title: str) -> str | None:
 
 def _entries(url: str, errors: list[str], label: str):
     try:
-        r = http.get(url, browser=True, timeout=30, retries=1)
+        r = http.get(url, browser=True, timeout=30, retries=1, headers={"Accept": RSS_ACCEPT})
         return feedparser.parse(r.content).entries
     except Exception as e:
         errors.append(f"{label}: {e}")

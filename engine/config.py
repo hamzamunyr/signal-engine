@@ -45,6 +45,7 @@ class SignalRule:
     stop_after: float
     any_re: re.Pattern | None = None
     all_res: list[re.Pattern] = field(default_factory=list)
+    near_re: re.Pattern | None = None
     title_re: re.Pattern | None = None
     computed: set[str] = field(default_factory=set)
 
@@ -55,11 +56,13 @@ class SignalRule:
             return True
         if self.title_re is not None:
             return bool(self.title_re.search(title))
+        if self.near_re is not None and not self.near_re.search(text):
+            return False
         if self.all_res:
             return all(r.search(text) for r in self.all_res)
         if self.any_re is not None:
             return bool(self.any_re.search(text))
-        return False
+        return self.near_re is not None
 
 
 @dataclass
@@ -122,12 +125,18 @@ def build_client(cfg: dict) -> Client:
             if any(p is None for p in parts):   # a list is empty for this client -> rule can't fire on text
                 parts = []
             rule.all_res = parts
+        if "near" in m:  # phrase from list A followed by phrase from list B within N words
+            a = _union([_compile_phrase(p) for p in _expand(m["near"][0], vocab)])
+            b = _union([_compile_phrase(p) for p in _expand(m["near"][1], vocab)])
+            gap = int(m["near"][2]) if len(m["near"]) > 2 else 6
+            if a is not None and b is not None:
+                rule.near_re = re.compile(f"(?:{a.pattern})(?:\\W+\\w+){{0,{gap}}}?\\W+(?:{b.pattern})", re.I)
         if "title_any" in m:
             rule.title_re = _union([_compile_phrase(p) for p in _expand(m["title_any"], vocab)])
         if "computed" in m:
             rule.computed.add(m["computed"])
         rule.computed.update(m.get("computed_any", []))
-        if rule.any_re is None and not rule.all_res and rule.title_re is None and not rule.computed:
+        if rule.any_re is None and not rule.all_res and rule.title_re is None and rule.near_re is None and not rule.computed:
             continue
         rules[sid] = rule
     neg = _union([_compile_phrase(p) for p in cfg.get("negative_keywords", [])])

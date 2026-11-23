@@ -15,6 +15,8 @@ log = logging.getLogger("match")
 
 LANE_A_GROUPS = {"explicit_intent", "churn", "first_party"}
 SENSITIVE_KINDS = {"post", "comment"}
+BOT_AUTHORS = {"automoderator", "[deleted]", "sneakpeekbot", "remindmebot", "savevideo", "visualmod"}
+BOT_TEXT = ("i am a bot", "you must first be an active community member", "this action was performed automatically")
 
 
 def _age_days(published, first_seen) -> float:
@@ -33,8 +35,11 @@ def match_row(c: Client, row: dict) -> dict | None:
     text = f"{title}\n{row.get('body') or ''}"
     if kind == "review" and meta.get("competitor"):
         text = f"{meta['competitor']} {text}"
-    if kind in SENSITIVE_KINDS and c.negative_re is not None and c.negative_re.search(text):
-        return None
+    if kind in SENSITIVE_KINDS:
+        if (row.get("author") or "").lower() in BOT_AUTHORS or any(b in text.lower() for b in BOT_TEXT):
+            return None
+        if c.negative_re is not None and c.negative_re.search(text):
+            return None
     flags = set(meta.get("flags") or [])
     hits = [r for r in c.rules.values() if r.matches(kind, text, title, flags)]
     if not hits:
@@ -52,7 +57,7 @@ def match_row(c: Client, row: dict) -> dict | None:
     raw = min(10.0, top.weight + 0.5 * (len(hits) - 1))
     score = round(raw * decay, 2)
     lane = "B"
-    if top.group in LANE_A_GROUPS and age <= 2 and raw >= 9:
+    if top.group in LANE_A_GROUPS and age <= 2 and raw >= 9 and kind != "comment":
         lane = "A"
     elif top.group == "funding" and age <= 2 and kind in ("news", "filing") and (
             "form_d_small" in flags or any(h.id in (42, 43) for h in hits)):
@@ -60,9 +65,12 @@ def match_row(c: Client, row: dict) -> dict | None:
     return {"signal_ids": sorted(h.id for h in hits), "trigger": top.group, "rule_score": score, "lane": lane}
 
 
-def run(limit: int = 50000) -> dict:
+def run(limit: int = 50000, rebuild: bool = False) -> dict:
+    if rebuild:  # re-match everything not yet scored or exported (after changing rules or client configs)
+        db.x("delete from client_matches where exported_at is null and llm_scored_at is null")
+        db.kv_set("match_last_id", 0)
     last_id = int(db.kv_get("match_last_id", 0) or 0)
-    rows = db.q("select id, source, kind, title, body, meta, published_at, first_seen_at, company_name, company_domain "
+    rows = db.q("select id, source, kind, title, body, author, meta, published_at, first_seen_at, company_name, company_domain "
                 "from raw_items where id > %s order by id limit %s", (last_id, limit))
     if not rows:
         return {"items": 0, "matches": 0}

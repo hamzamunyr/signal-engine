@@ -15,7 +15,8 @@ var TIMELINE = 18, FIRST = 19, UPDATED = 20, STATUS = 21;
 
 function sheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  var sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) { sh = ss.getSheets()[0]; sh.setName(SHEET_NAME); }
   if (sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
     sh.setFrozenRows(1);

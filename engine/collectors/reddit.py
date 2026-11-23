@@ -103,6 +103,23 @@ def _rss(url: str, errors: list[str]) -> list[Item]:
     return items
 
 
+def _sitewide(errors: list[str]) -> list[Item]:
+    """Explicit-intent phrases across ALL of Reddit (outside the community list) via Arctic Shift full-text search."""
+    out: list[Item] = []
+    after = int(time.time()) - 3 * 86400
+    for qy in SITEWIDE_QUERIES:
+        try:
+            r = http.json(f"{AS}/posts/search", params={"query": qy.replace('"', ''), "after": after, "limit": 100},
+                          timeout=40, retries=0)
+            out.extend(_post_item(d) for d in r.get("data") or [] if d.get("id"))
+        except Exception as e:
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            errors.append(f"sitewide '{qy}': {code or e}")
+            if code == 400:  # API refuses search without a subreddit; stop trying this run
+                break
+    return out
+
+
 def collect():
     errors: list[str] = []
     items: list[Item] = []
@@ -116,12 +133,12 @@ def collect():
         comments = _arctic("comments", sub, after, errors)
         if posts or comments:
             items.extend(_post_item(d) for d in posts if d.get("id"))
-            items.extend(_comment_item(d) for d in comments if d.get("id") and d.get("body") not in ("[deleted]", "[removed]"))
+            items.extend(_comment_item(d) for d in comments if d.get("id") and d.get("body") not in ("[deleted]", "[removed]")
+                         and d.get("author") != "AutoModerator")
             newest = max([int(d.get("created_utc") or 0) for d in posts + comments] + [after])
             state[key] = newest
         else:
             items.extend(_rss(f"https://www.reddit.com/r/{sub}/new/.rss?limit=100", errors))
-    for qy in SITEWIDE_QUERIES:
-        items.extend(_rss(f"https://www.reddit.com/search.rss?q={quote_plus(qy)}&sort=new&t=week", errors))
+    items.extend(_sitewide(errors))
     db.kv_set("reddit_cursor", state)
     return items, errors
