@@ -32,7 +32,6 @@ FEEDS = {
     "eu_startups": "https://www.eu-startups.com/feed/",
     "prnewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
     "businesswire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWQ==",
-    "accesswire": "https://www.accesswire.com/users/newswire/rss",
 }
 
 VERBS = r"(raises|raised|secures|closes|lands|appoints|names|hires|launches|announces|acquires|acquired|partners|" \

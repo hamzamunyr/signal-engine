@@ -23,6 +23,7 @@ NAME = "reddit"
 AS = "https://arctic-shift.photon-reddit.com/api"
 MAX_PAGES = 6
 LOOKBACK_FIRST_RUN = 2 * 86400
+OVERLAP = 6 * 3600
 
 SITEWIDE_QUERIES = [
     '"looking for" "lead generation"', '"recommend" "lead generation agency"', '"outbound agency"',
@@ -128,16 +129,16 @@ def collect():
     for sub in union_list("communities"):
         key = sub.lower()
         after = int(state.get(key, now - LOOKBACK_FIRST_RUN))
-        after = max(after, now - 7 * 86400)
+        after = max(after - OVERLAP, now - 7 * 86400)   # overlap: Arctic Shift indexes some posts late
+        n_err = len(errors)
         posts = _arctic("posts", sub, after, errors)
         comments = _arctic("comments", sub, after, errors)
+        items.extend(_post_item(d) for d in posts if d.get("id"))
+        items.extend(_comment_item(d) for d in comments if d.get("id") and d.get("body") not in ("[deleted]", "[removed]")
+                     and d.get("author") != "AutoModerator")
         if posts or comments:
-            items.extend(_post_item(d) for d in posts if d.get("id"))
-            items.extend(_comment_item(d) for d in comments if d.get("id") and d.get("body") not in ("[deleted]", "[removed]")
-                         and d.get("author") != "AutoModerator")
-            newest = max([int(d.get("created_utc") or 0) for d in posts + comments] + [after])
-            state[key] = newest
-        else:
+            state[key] = max([int(d.get("created_utc") or 0) for d in posts + comments] + [after + OVERLAP])
+        elif len(errors) > n_err:   # Arctic Shift failed (not just quiet): try Reddit RSS
             items.extend(_rss(f"https://www.reddit.com/r/{sub}/new/.rss?limit=100", errors))
     items.extend(_sitewide(errors))
     db.kv_set("reddit_cursor", state)

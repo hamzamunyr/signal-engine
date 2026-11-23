@@ -23,6 +23,9 @@ def collect():
             r = http.get(url, browser=True, timeout=30, retries=1)
         except Exception as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
+            if code == 403:  # Trustpilot blocks cloud servers; stop for this run
+                errors.append("trustpilot blocked this server (403); churn signals come from Reddit/HN posts")
+                break
             if code != 404:  # 404 = competitor has no Trustpilot page
                 errors.append(f"{dom}: {e}")
             continue
