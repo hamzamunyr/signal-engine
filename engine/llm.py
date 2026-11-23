@@ -145,7 +145,7 @@ def push() -> dict:
         "id": f"{user}/{KERNEL_SLUG}", "title": KERNEL_SLUG, "code_file": "score.py", "language": "python",
         "kernel_type": "script", "is_private": True, "enable_gpu": True, "enable_tpu": False,
         "enable_internet": False, "dataset_sources": [], "competition_sources": [], "kernel_sources": [],
-        "model_sources": [MODEL_7B, MODEL_3B], "machine_shape": os.environ.get("KAGGLE_MACHINE", "NvidiaTeslaT4"),
+        "model_sources": [MODEL_7B, MODEL_3B], "machine_shape": os.environ.get("KAGGLE_MACHINE", "NvidiaTeslaP100"),
     }
     (work / "kernel-metadata.json").write_text(json.dumps(meta, indent=1))
     out = _kaggle("kernels", "push", "-p", str(work))
