@@ -113,8 +113,30 @@ def _update_company(row: dict, r: dict):
           r.get("employee_estimate"), Jsonb([entry])))
 
 
+def _removals(client: str) -> list[str]:
+    """Companies already in the sheet whose every exported row is now rejected."""
+    rows = db.q("""
+        select m.id as mid, m.*, r.url, r.company_name as r_name, r.company_domain as r_domain
+        from client_matches m join raw_items r on r.id = m.item_id
+        where m.client=%s and m.exported_at is not null and m.queue='rejected' and m.status <> 'removed'""", (client,))
+    keys = set()
+    for r in rows:
+        r["company_name"] = r.get("company_name") or r.get("r_name")
+        r["company_domain"] = r.get("company_domain") or r.get("r_domain")
+        keys.add(company_key(r))
+    keep = db.q("""
+        select m.id as mid, m.*, r.url, coalesce(m.company_name, r.company_name) as company_name,
+               coalesce(m.company_domain, r.company_domain) as company_domain
+        from client_matches m join raw_items r on r.id = m.item_id
+        where m.client=%s and m.exported_at is not null and m.queue <> 'rejected'""", (client,))
+    keys -= {company_key(r) for r in keep}
+    if rows:
+        db.x("update client_matches set status='removed' where id = any(%s)", ([r["mid"] for r in rows],))
+    return sorted(keys)
+
+
 def run(include_unscored: bool | None = None, rebuild: bool = False) -> dict:
-    if rebuild:  # resend everything still worth reviewing (after the sheet was cleared)
+    if rebuild:  # clear the sheet and resend everything still worth reviewing
         db.x("update client_matches set exported_at=null where queue in ('lane_a','auto_approved','human_review')")
     if include_unscored is None:
         include_unscored = not kaggle_ready()
@@ -131,15 +153,17 @@ def run(include_unscored: bool | None = None, rebuild: bool = False) -> dict:
         lane_a = [r for r in cands if r["queue"] == "lane_a"]
         rest = [r for r in cands if r["queue"] != "lane_a"][:room]
         rows = lane_a + rest   # Lane A is never held back by the daily cap
-        if not rows:
+        remove = [] if rebuild else _removals(c.name)
+        payload = [to_sheet_row(r) for r in rows]
+        if not rows and not remove and not rebuild:
             out[c.name] = 0
             continue
-        payload = [to_sheet_row(r) for r in rows]
         if not url:
             log.warning("no SHEET_WEBHOOK for %s; %d rows ready but not sent", c.name, len(rows))
             out[c.name] = f"{len(rows)} ready, no webhook"
             continue
-        resp = http.post(url, json={"token": token, "client": c.name, "rows": payload}, timeout=60, retries=1)
+        resp = http.post(url, json={"token": token, "client": c.name, "rows": payload,
+                                      "remove": remove, "reset": bool(rebuild)}, timeout=60, retries=1)
         try:
             body = resp.json()
         except ValueError:

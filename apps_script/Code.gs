@@ -4,6 +4,7 @@
  * (key SHEET_TOKEN), then Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone).
  * The engine POSTs {token, client, rows:[...]}. One row per company (key); new evidence is merged into
  * the existing row's Timeline and the higher priority wins. Your own columns (Status, Notes) are never touched.
+ * Optional: reset:true clears all rows first; remove:[keys] deletes rows the LLM later rejected.
  */
 var SHEET_NAME = 'Leads';
 var HEADERS = ['Key', 'Company', 'Domain', 'Priority', 'Queue', 'Trigger', 'Signals', 'Intent', 'ICP fit',
@@ -40,6 +41,16 @@ function doPost(e) {
     var token = PropertiesService.getScriptProperties().getProperty('SHEET_TOKEN');
     if (!token || body.token !== token) return json_({ok: false, error: 'bad token'});
     var sh = sheet_();
+    if (body.reset === true && sh.getLastRow() > 1) {
+      sh.deleteRows(2, sh.getLastRow() - 1);
+    }
+    var removed = 0;
+    if (body.remove && body.remove.length && sh.getLastRow() > 1) {
+      var ks = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+      for (var k = ks.length - 1; k >= 0; k--) {
+        if (body.remove.indexOf(String(ks[k][0])) !== -1) { sh.deleteRow(k + 2); removed++; }
+      }
+    }
     var last = sh.getLastRow();
     var keys = last > 1 ? sh.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return String(r[0]); }) : [];
     var now = new Date();
@@ -77,7 +88,7 @@ function doPost(e) {
       var n = sh.getLastRow() - 1;
       if (n > 1) sh.getRange(2, 1, n, HEADERS.length).sort({column: FIELD.priority, ascending: false});
     }
-    return json_({ok: true, added: added, merged: merged});
+    return json_({ok: true, added: added, merged: merged, removed: removed});
   } catch (err) {
     return json_({ok: false, error: String(err)});
   } finally {
