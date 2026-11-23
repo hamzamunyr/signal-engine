@@ -24,10 +24,11 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Start SearXNG (self-hosted search for job board discovery)
         run: |
-          sed -i "s/REPLACED_AT_RUNTIME/$(openssl rand -hex 24)/" searxng/settings.yml
-          docker run -d --name searxng -p 8888:8080 -v "$PWD/searxng:/etc/searxng" searxng/searxng:latest
+          mkdir -p /tmp/searxng && cp searxng/settings.yml /tmp/searxng/
+          sed -i "s/REPLACED_AT_RUNTIME/$(openssl rand -hex 24)/" /tmp/searxng/settings.yml
+          docker run -d --name searxng -p 8888:8080 -v /tmp/searxng:/etc/searxng searxng/searxng:latest
           for i in $(seq 1 40); do curl -sf "http://localhost:8888/search?q=test&format=json" >/dev/null && break; sleep 3; done
-          git checkout searxng/settings.yml
+          curl -s "http://localhost:8888/search?q=site%3Ajobs.lever.co+SDR&format=json" | head -c 400 || true
       - run: python -m engine collect weekly
         continue-on-error: true
       - run: python -m engine match
