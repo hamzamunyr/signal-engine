@@ -45,6 +45,17 @@ events, government tenders, Series B+, M&A, layoffs), leaving **93 active signal
 | `SHEET_WEBHOOK` | secret | add after deploying the Apps Script |
 | `KAGGLE_USERNAME`, `KAGGLE_KEY` | secrets | add from kaggle.com > Settings > API > Create New Token |
 
+## LinkedIn-first outreach (current setup)
+
+`outreach_channel: linkedin` in the client config makes the LLM write a short LinkedIn connection note in the
+Angle column. Decision makers come from Clay: company size and founders / sales leaders with LinkedIn URLs are
+stored in the `enrichment` table and shown in the Size and Contact columns. Clay runs from a chat with Claude
+(it has no free API for GitHub Actions); ask "enrich the new sheet leads with Clay". Companies over the
+client's `max_employees` by Clay headcount are removed automatically.
+
+`python -m engine resolve` finds website domains for leads that only have a name (article links, then likely
+domains), so Clay can match them.
+
 ## Daily use
 
 1. Open the lead sheet each morning. Rows are one per company, sorted by priority; Timeline shows every signal.
