@@ -61,6 +61,9 @@ def match_row(c: Client, row: dict) -> dict | None:
         if c.negative_re is not None and c.negative_re.search(text):
             return None
     flags = set(meta.get("flags") or [])
+    max_emp = (c.cfg.get("icp") or {}).get("max_employees")
+    if kind == "job" and max_emp and (meta.get("open_roles") or 0) > max(15, int(max_emp) * 0.5):
+        return None   # too many open roles for a small-company ICP
     hits = [r for r in c.rules.values() if r.matches(kind, text, title, flags)]
     if not hits:
         return None
