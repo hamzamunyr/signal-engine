@@ -40,11 +40,23 @@ def candidates(client: str, limit: int, include_unscored: bool) -> list[dict]:
     rows = db.q("""
         select m.id as mid, m.*, r.source, r.kind, r.url, r.title, r.body, r.author, r.published_at, r.first_seen_at,
                r.meta, coalesce(m.company_name, r.company_name) as company_name,
-               coalesce(m.company_domain, r.company_domain) as company_domain
+               coalesce(m.company_domain, r.company_domain) as company_domain,
+               e.employees as clay_employees, e.size_bucket as clay_size, e.contacts as clay_contacts,
+               e.linkedin_company as clay_linkedin
         from client_matches m join raw_items r on r.id = m.item_id
+        left join enrichment e on e.domain = coalesce(m.company_domain, r.company_domain)
         where m.client=%s and m.exported_at is null and m.queue = any(%s)
           and (m.queue <> 'new' or (m.rule_score >= 8 and m.created_at > now() - interval '2 days'))
         order by m.priority desc nulls last, m.rule_score desc limit %s""", (client, queues, limit * 4))
+    max_emp = None
+    for c in clients():
+        if c.name == client:
+            max_emp = (c.cfg.get("icp") or {}).get("max_employees")
+    if max_emp:
+        too_big = [r["mid"] for r in rows if (r.get("clay_employees") or 0) > int(max_emp)]
+        if too_big:
+            db.x("update client_matches set queue='rejected', reject_reason='too big (Clay headcount)' where id = any(%s)", (too_big,))
+        rows = [r for r in rows if r["mid"] not in set(too_big)]
     for r in rows:
         if r["queue"] == "new":
             r["queue"] = "unscored"
@@ -57,7 +69,10 @@ def to_sheet_row(r: dict) -> dict:
     meta = r.get("meta") or {}
     sigs = ", ".join(f"{i} {cat[i]['name']}" for i in (r["signal_ids"] or []) if i in cat)
     contact = ""
-    if meta.get("persons"):
+    clay = r.get("clay_contacts") or []
+    if clay:
+        contact = "\n".join(f"{c.get('name')} ({c.get('title')}) {c.get('linkedin') or ''}".strip() for c in clay[:3])
+    elif meta.get("persons"):
         contact = "; ".join(f"{p.get('name')} ({'/'.join(p.get('roles') or [])})" for p in meta["persons"][:4])
     elif r.get("author") and r["kind"] in ("post", "comment"):
         contact = f"{r['source']} user: {r['author']}"
@@ -73,7 +88,7 @@ def to_sheet_row(r: dict) -> dict:
         "signals": sigs,
         "intent": r.get("intent_score") if r.get("intent_score") is not None else "",
         "icp_fit": r.get("icp_fit_score") if r.get("icp_fit_score") is not None else "",
-        "size": r.get("employee_estimate") or "",
+        "size": (f"{r['clay_employees']} employees" if r.get("clay_employees") else (r.get("clay_size") or r.get("employee_estimate") or "")),
         "evidence": quote,
         "angle": r.get("recommended_angle") or "",
         "contact": contact or (r.get("decision_maker_role") or ""),
@@ -98,7 +113,9 @@ def _update_company(row: dict, r: dict):
           r.get("employee_estimate"), Jsonb([entry])))
 
 
-def run(include_unscored: bool | None = None) -> dict:
+def run(include_unscored: bool | None = None, rebuild: bool = False) -> dict:
+    if rebuild:  # resend everything still worth reviewing (after the sheet was cleared)
+        db.x("update client_matches set exported_at=null where queue in ('lane_a','auto_approved','human_review')")
     if include_unscored is None:
         include_unscored = not kaggle_ready()
     out = {}

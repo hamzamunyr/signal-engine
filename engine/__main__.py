@@ -2,7 +2,8 @@
 
   collect <group|collector...>   run collectors (groups: frequent, daily, weekly)
   match                          match new items to clients (rules + Lane A)
-  export [--unscored]            send review-ready leads to Google Sheets
+  resolve                        find website domains for leads that only have a name
+  export [--unscored] [--rebuild]            send review-ready leads to Google Sheets
   score-push                     push today's LLM batch to Kaggle
   score-pull                     wait for Kaggle, ingest scores
   health                         write docs/health.md
@@ -30,9 +31,12 @@ def main(argv: list[str]) -> int:
     elif cmd == "match":
         from .match import run
         res = run(rebuild="--rebuild" in args)
+    elif cmd == "resolve":
+        from .resolve import run
+        res = run()
     elif cmd == "export":
         from .export import run
-        res = run(include_unscored=True if "--unscored" in args else None)
+        res = run(include_unscored=True if "--unscored" in args else None, rebuild="--rebuild" in args)
     elif cmd == "score-push":
         from .llm import kaggle_ready, push
         res = push() if kaggle_ready() else {"skipped": "no Kaggle credentials"}

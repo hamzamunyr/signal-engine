@@ -31,5 +31,6 @@ jobs:
         run: |
           python -m engine score-push
           python -m engine score-pull
+      - run: python -m engine resolve
       - run: python -m engine export
       - run: python -m engine health

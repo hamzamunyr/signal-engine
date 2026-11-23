@@ -56,12 +56,15 @@ negative_keywords: ["cold email tips", "what is cold email", "i will provide", "
 # Where to look first (Reddit). Posts outside these are only used if they hit a strong explicit-intent phrase.
 communities: [sales, salesdevelopment, coldemail, Emailmarketing, leadgeneration, b2bmarketing, B2BSaaS, startups,
               Entrepreneur, EntrepreneurRideAlong, smallbusiness, SaaS, agency, marketing, digital_marketing,
-              GrowthHacking, consulting, sweatystartup, msp, recruiting, Accounting, smallbusinessuk]
+              GrowthHacking, consulting, sweatystartup, msp, recruiting, Accounting, smallbusinessuk,
+              startup, Entrepreneurs, indiehackers, SideProject, microsaas, founder, ycombinator, SaaSMarketing,
+              agencygrowthhacks, freelance, webdev, ecommercemarketing, LinkedInTips, b2b_sales]
 
 # Hacker News full-text queries (posts and comments)
 hn_queries: ["lead generation agency", "cold email agency", "outbound agency", "appointment setting",
              "outsourced SDR", "struggling to get leads", "cold email not working", "first sales hire",
-             "how do you get your first customers", "book more meetings"]
+             "how do you get your first customers", "book more meetings", "Launch HN", "first 10 customers",
+             "need help with sales", "looking for a growth agency", "go-to-market help", "founder-led sales"]
 
 # Stack Exchange (site: [queries])
 stackexchange: {}
@@ -69,7 +72,10 @@ stackexchange: {}
 # Google News RSS queries (news collector adds global funding / leadership / launch queries)
 news_queries: ['"hires" "head of sales" startup', '"first sales hire"', '"appoints" "VP of Sales"',
                '"joins as" "head of growth"', '"raises" "pre-seed"', '"raises" "seed round" B2B',
-               '"Series A" B2B SaaS', '"launches" B2B platform']
+               '"Series A" B2B SaaS', '"launches" B2B platform', '"pre-seed" B2B SaaS', '"seed funding" agency',
+               '"raises" "seed" "B2B"', '"hires first" sales', '"names" "Head of Growth"', '"appoints" "Head of Sales" startup',
+               '"launches" "AI agent" B2B', '"bootstrapped" B2B SaaS launches', '"seed round" "go-to-market"',
+               '"expands to the US" startup', '"opens US office" startup']
 
 tender_keywords: []        # off: government buyers are outside this ICP
 
@@ -105,6 +111,7 @@ signals:
 score_threshold: 6.0       # LLM priority needed to reach the sheet
 leads_per_day: 40          # most rows to add to the sheet per day
 llm_daily_cap: 700         # most items sent to the LLM per day
+outreach_channel: linkedin   # LinkedIn first for now; email later
 output:
   sheet: true
 

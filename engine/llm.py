@@ -51,7 +51,7 @@ SCHEMA = """{
  "trigger": "explicit_intent|pain|churn|hiring|funding|launch|leadership|expansion|tech|website|procurement|community|new_company",
  "evidence_quote": "exact words from the text, max 25 words",
  "decision_maker_role": "who to contact",
- "recommended_angle": "max 15 words",
+ "recommended_angle": "LinkedIn connection note to the decision maker, max 280 characters, plain and specific to the signal, no pitch",
  "reject_reason": "short reason if is_lead is false, else null"
 }"""
 
@@ -96,7 +96,8 @@ def build_prompt(cfg: dict, row: dict, signal_ids: list[int]) -> str:
         f"OFFER CATEGORY: {', '.join(cfg.get('offer_category') or [])}\n"
         f"ICP: {icp.get('description')} B2B only: {icp.get('b2b_only', True)}. Max employees: {icp.get('max_employees', 'any')}. "
         f"Countries: {', '.join(icp.get('countries') or []) or 'any'}. Exclude: {', '.join(icp.get('exclude') or [])}.\n"
-        f"BUYER TITLES: {', '.join(cfg.get('buyer_titles') or [])}\n\n"
+        f"BUYER TITLES: {', '.join(cfg.get('buyer_titles') or [])}\n"
+        f"OUTREACH CHANNEL: {cfg.get('outreach_channel', 'email')} (write recommended_angle for this channel)\n\n"
         f"CANDIDATE SIGNALS (from keyword rules):\n{cands}\n\n"
         f"ITEM:\n{_item_block(row)}\n\n{GUIDE}\n\nReturn JSON exactly in this shape:\n{SCHEMA}"
     )
