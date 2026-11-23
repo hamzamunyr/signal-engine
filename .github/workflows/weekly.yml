@@ -1,0 +1,41 @@
+name: weekly (job board discovery, tech + website changes, health)
+on:
+  schedule:
+    - cron: "30 19 * * 0"   # Sunday
+  workflow_dispatch:
+concurrency: { group: engine-weekly, cancel-in-progress: false }
+permissions:
+  contents: write
+env:
+  SUPABASE_REF: ${{ vars.SUPABASE_REF }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  SHEET_WEBHOOK: ${{ secrets.SHEET_WEBHOOK }}
+  SHEET_TOKEN: ${{ secrets.SHEET_TOKEN }}
+  CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+  SEARXNG_URL: http://localhost:8888
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Start SearXNG (self-hosted search for job board discovery)
+        run: |
+          sed -i "s/REPLACED_AT_RUNTIME/$(openssl rand -hex 24)/" searxng/settings.yml
+          docker run -d --name searxng -p 8888:8080 -v "$PWD/searxng:/etc/searxng" searxng/searxng:latest
+          for i in $(seq 1 40); do curl -sf "http://localhost:8888/search?q=test&format=json" >/dev/null && break; sleep 3; done
+          git checkout searxng/settings.yml
+      - run: python -m engine collect weekly
+        continue-on-error: true
+      - run: python -m engine match
+      - run: python -m engine cleanup
+      - run: python -m engine health
+      - name: Commit health report (also keeps scheduled runs alive on a public repo)
+        run: |
+          git config user.name "signal-engine-bot"
+          git config user.email "signal-engine-bot@users.noreply.github.com"
+          git add docs/health.md
+          git diff --cached --quiet || (git commit -m "health report $(date -u +%F)" && git push)

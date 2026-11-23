@@ -1,0 +1,39 @@
+# Copy to clients/<client>.yaml and fill in from the client intake form (docs/onboarding.md).
+client: example-client
+active: false
+offer: One sentence on what the client sells.
+offer_category: [main category, other names for it]
+
+icp:
+  description: Who they sell to.
+  b2b_only: true
+  max_employees: 500
+  countries: [US, CA]        # empty = any
+  exclude: [who is a bad fit]
+buyer_titles: [Founder, Head of Sales]
+
+offer_terms: ["words a buyer uses for what they sell"]
+tool_terms: ["tools buyers use before switching"]
+competitors: ["Competitor A", "Competitor B"]
+competitor_domains: ["competitora.com"]
+pain_terms: ["how buyers describe the problem"]
+industry_terms: ["industry words"]
+negative_keywords: ["noise to drop", "job seekers"]
+communities: [smallbusiness, startups]     # subreddits
+hn_queries: []
+stackexchange: {}                           # e.g. {serverfault: ["backup solution"]}
+news_queries: []
+tender_keywords: []                         # e.g. ["managed IT services"] turns on TED / Find a Tender
+target_domains: []                          # companies to watch for tech/website changes
+skip_sources: []
+
+signals:
+  disabled: []
+  weights: {}
+
+score_threshold: 6.0
+leads_per_day: 30
+llm_daily_cap: 500
+output:
+  sheet: true
+message_templates: {}

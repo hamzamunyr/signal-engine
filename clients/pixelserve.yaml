@@ -1,0 +1,117 @@
+# Niche pack for The Pixel Serve (thepixelserve.com)
+client: pixelserve
+active: true
+offer: >-
+  Done-for-you outbound lead generation for B2B companies: cold email infrastructure (domains, inboxes,
+  warmup), targeted lead lists, personalized cold email campaigns and CRM setup that book qualified sales
+  meetings for the client.
+offer_category: [outbound lead generation agency, cold email agency, appointment setting, outsourced SDR]
+
+icp:
+  description: Any B2B company (agencies, SaaS, consultancies, services firms, startups) with under 50 employees.
+  b2b_only: true
+  max_employees: 50
+  countries: []            # empty = any country
+  exclude: [B2C consumer brands, ecommerce stores selling to consumers, students, job seekers, people selling cold email services themselves]
+buyer_titles: [Founder, Co-founder, CEO, Owner, Managing Director, Head of Sales, VP Sales, Head of Growth]
+
+# Words a buyer uses for the offer (signals 1, 7, 8, 9, 29, 95, 99, 100, 102, 105)
+offer_terms: ["lead generation", "lead gen", "leadgen", "outbound", "cold email", "cold emailing", "cold outreach",
+              "appointment setting", "appointment setter", "sdr", "bdr", "sales development", "booking meetings",
+              "book meetings", "book calls", "demand generation", "b2b leads", "sales pipeline", "pipeline generation",
+              "email outreach", "outreach agency", "prospecting", "lead list", "lead lists", "client acquisition",
+              "b2b marketing agency", "growth agency"]
+
+# Tools buyers ask about (signals 6, 103) - asking about these shows they are trying to do outbound themselves
+tool_terms: ["instantly", "smartlead", "lemlist", "apollo", "apollo.io", "clay", "outreach.io", "salesloft",
+             "reply.io", "woodpecker", "mailshake", "zoominfo", "lusha", "seamless.ai", "heyreach", "expandi",
+             "hubspot", "pipedrive", "close crm", "gohighlevel", "cold email tool", "cold email software",
+             "email warmup", "warmup tool", "sales engagement", "crm", "lead database", "email finder",
+             "sequencer", "email sequence"]
+
+# Other outbound / lead gen agencies (signals 10, 24-26, 92, 96-101)
+competitors: ["Belkins", "CIENCE", "SalesHive", "Leadium", "Martal Group", "Callbox", "SalesRoads",
+              "Abstrakt Marketing", "Memory Blue", "Sapper Consulting", "Operatix", "Growth Assistant",
+              "LeadGeneration.com", "Leadfeeder agency", "Salesroads", "Pearl Lemon Leads", "Lead Cookie",
+              "Overloop agency", "Hunter agency", "SalesAR", "Lemlist agency", "Cleverly", "Prospect Hive"]
+competitor_domains: ["belkins.io", "cience.com", "saleshive.com", "leadium.com", "martal.ca", "callboxinc.com",
+                     "salesroads.com", "abstraktmg.com", "memoryblue.com", "cleverly.co", "pearllemonleads.com",
+                     "leadcookie.com", "growthassistant.com"]
+
+# Pain phrases on top of the catalog's signals 11-18 (signal 31)
+pain_terms: ["struggling to get leads", "need more clients", "not enough clients", "pipeline is dry", "no meetings",
+             "low reply rate", "cold email not working", "going to spam", "lead quality", "rely on referrals",
+             "feast or famine", "inconsistent pipeline", "sales are slow", "need more customers", "can't find customers"]
+
+industry_terms: ["cold email", "outbound", "lead generation", "appointment setting", "sdr", "sales pipeline", "b2b sales"]
+
+# Text that marks noise (job seekers, people teaching cold email, other agencies selling)
+negative_keywords: ["cold email tips", "what is cold email", "i will provide", "i will generate", "i will do",
+                    "fiverr gig", "hire me", "for hire", "[for hire]", "my services", "dm me for", "we offer lead generation",
+                    "we help companies", "i help companies", "i help b2b", "we generate leads for", "looking for a job",
+                    "looking for work", "job hunting", "resume", "my resume", "internship", "entry level sdr job",
+                    "how to become an sdr", "sdr interview", "bdr interview", "is sdr a good career", "quit my sdr job",
+                    "crypto", "forex", "mlm", "onlyfans", "dropshipping store", "affiliate link"]
+
+# Where to look first (Reddit). Posts outside these are only used if they hit a strong explicit-intent phrase.
+communities: [sales, salesdevelopment, coldemail, Emailmarketing, leadgeneration, b2bmarketing, B2BSaaS, startups,
+              Entrepreneur, EntrepreneurRideAlong, smallbusiness, SaaS, agency, marketing, digital_marketing,
+              GrowthHacking, consulting, sweatystartup, msp, recruiting, Accounting, smallbusinessuk]
+
+# Hacker News full-text queries (posts and comments)
+hn_queries: ["lead generation agency", "cold email agency", "outbound agency", "appointment setting",
+             "outsourced SDR", "struggling to get leads", "cold email not working", "first sales hire",
+             "how do you get your first customers", "book more meetings"]
+
+# Stack Exchange (site: [queries])
+stackexchange: {}
+
+# Google News RSS queries (news collector adds global funding / leadership / launch queries)
+news_queries: ['"hires" "head of sales" startup', '"first sales hire"', '"appoints" "VP of Sales"',
+               '"joins as" "head of growth"', '"raises" "pre-seed"', '"raises" "seed round" B2B',
+               '"Series A" B2B SaaS', '"launches" B2B platform']
+
+tender_keywords: []        # off: government buyers are outside this ICP
+
+# Sources to skip for this client (8-K and tenders are large public bodies, outside a <50 employee ICP)
+skip_sources: [edgar_8k, ted, find_a_tender]
+
+# Signal on/off and weight multipliers (1.0 = catalog default)
+signals:
+  disabled: [39, 45, 48, 49, 51, 58, 87, 88, 91, 111, 112, 113, 114]
+  weights:
+    1: 1.2
+    2: 1.3
+    3: 1.3
+    4: 1.3
+    5: 1.3
+    11: 1.1
+    12: 1.1
+    13: 1.2
+    14: 1.0
+    19: 1.3
+    20: 1.2
+    24: 0.5
+    27: 0.6
+    32: 1.2
+    33: 1.2
+    34: 1.2
+    42: 1.1
+    43: 1.1
+    44: 0.9
+    108: 1.3
+
+# Review queue and output
+score_threshold: 6.0       # LLM priority needed to reach the sheet
+leads_per_day: 40          # most rows to add to the sheet per day
+llm_daily_cap: 700         # most items sent to the LLM per day
+output:
+  sheet: true
+
+message_templates:
+  explicit_intent: "Saw your post about {topic}. We set up done-for-you outbound for small B2B teams. Worth a quick look at how it would work for {company}?"
+  pain: "Noticed you mentioned {pain}. Most small B2B teams fix that with better targeting and infrastructure, not more volume. Open to a 2-minute breakdown?"
+  hiring: "Saw {company} is hiring {role}. Teams often struggle to turn a new hire into steady meetings in the first 90 days. Worth seeing how others set up outbound during that ramp?"
+  funding: "Congrats on the {round}. Right after a raise is usually when pipeline pressure starts. Want to see how small teams build outbound without hiring SDRs first?"
+  churn: "Saw your note about {competitor}. If you are rethinking outbound, happy to share what we do differently in one short email."
+  launch: "Congrats on launching {product}. Want help getting the first sales calls booked with your ideal buyers?"

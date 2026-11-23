@@ -1,0 +1,35 @@
+name: manual run (any command)
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "e.g. 'collect reddit hn' or 'match' or 'export --unscored' or 'health'"
+        required: true
+        default: "collect frequent"
+      then_match_export:
+        description: "Run match + export afterwards"
+        type: boolean
+        default: true
+env:
+  SUPABASE_REF: ${{ vars.SUPABASE_REF }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  SHEET_WEBHOOK: ${{ secrets.SHEET_WEBHOOK }}
+  SHEET_TOKEN: ${{ secrets.SHEET_TOKEN }}
+  KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+  KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+  CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m engine ${{ inputs.command }}
+      - if: ${{ inputs.then_match_export }}
+        run: |
+          python -m engine match
+          python -m engine export
+      - run: python -m engine health

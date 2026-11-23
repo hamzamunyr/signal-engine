@@ -1,0 +1,26 @@
+name: frequent (posts, news, funding, launches)
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+concurrency: { group: engine-frequent, cancel-in-progress: false }
+env:
+  SUPABASE_REF: ${{ vars.SUPABASE_REF }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  SHEET_WEBHOOK: ${{ secrets.SHEET_WEBHOOK }}
+  SHEET_TOKEN: ${{ secrets.SHEET_TOKEN }}
+  KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+  KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+  CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m engine collect frequent
+      - run: python -m engine match
+      - run: python -m engine export

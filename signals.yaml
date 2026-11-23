@@ -1,0 +1,348 @@
+# Signal catalog: all 114 signals from "Intent Signal System: All 114 Signals".
+#
+# Each signal has:
+#   group     trigger group (sets base weight and half-life, see `groups`)
+#   status    full | partial | proxy (from the spec)
+#   kinds     which item kinds it can match (post, comment, job, news, filing, launch, review, tender, website)
+#   match     how the rule matcher finds candidates (the LLM then confirms and scores)
+#             any:    one phrase from the list must appear
+#             all_of: one phrase from EACH list must appear
+#             computed: a flag set by a collector (job counts, filing items, website diffs)
+#             "re:..." entries are regular expressions; {name} expands to a vocab list or client list
+#   built     false = no free no-login collector yet (LinkedIn, ads, proxy demand); kept for completeness
+#
+# Client configs can turn signals off or change weights (see clients/_template.yaml).
+
+groups:
+  first_party:     {weight: 10, half_life: 3,  stop_after: 14}
+  explicit_intent: {weight: 9,  half_life: 7,  stop_after: 30}
+  churn:           {weight: 8,  half_life: 7,  stop_after: 30}
+  pain:            {weight: 7,  half_life: 7,  stop_after: 30}
+  hiring:          {weight: 7,  half_life: 21, stop_after: 45}
+  funding:         {weight: 7,  half_life: 14, stop_after: 60}
+  launch:          {weight: 6,  half_life: 14, stop_after: 60}
+  leadership:      {weight: 6,  half_life: 30, stop_after: 90}
+  procurement:     {weight: 6,  half_life: 14, stop_after: 45}
+  competitor:      {weight: 5,  half_life: 7,  stop_after: 30}
+  expansion:       {weight: 5,  half_life: 30, stop_after: 90}
+  community:       {weight: 4,  half_life: 7,  stop_after: 30}
+  tech:            {weight: 4,  half_life: 30, stop_after: 90}
+  website:         {weight: 4,  half_life: 30, stop_after: 90}
+  timing:          {weight: 4,  half_life: 30, stop_after: 90}
+  new_company:     {weight: 3,  half_life: 60, stop_after: 120}
+  proxy:           {weight: 1,  half_life: 30, stop_after: 60}
+
+# Shared vocabulary. Clients may add to these in their config under `vocab`.
+vocab:
+  seek: ["looking for", "look for", "searching for", "recommend", "recommendation", "recommendations",
+         "any good", "need a", "need an", "need some", "want to hire", "hire a", "hire an", "hiring a",
+         "suggestions for", "suggest a", "who do you use", "anyone use", "anyone know", "can anyone",
+         "does anyone know", "where can i find", "where to find", "in the market for", "shopping for"]
+  provider: ["agency", "agencies", "firm", "company", "companies", "service", "services", "partner",
+             "provider", "vendor", "freelancer", "consultant", "contractor", "someone", "team"]
+  negative_words: ["terrible", "awful", "worst", "scam", "waste of money", "disappointed", "useless",
+                   "horrible", "never again", "rip off", "ripoff", "ripped off", "garbage", "avoid",
+                   "frustrated", "frustrating", "poor service", "bad experience", "not worth", "refund"]
+  appoint: ["appoints", "appointed", "names", "named", "hires", "hired", "joins", "welcomes",
+            "promotes", "promoted", "announces", "taps", "adds"]
+  sales_titles: ["re:\\bsdrs?\\b", "re:\\bbdrs?\\b", "sales development", "business development representative",
+                 "business development rep", "account executive", "re:\\baes?\\b", "appointment setter",
+                 "sales representative", "sales rep", "inside sales", "sales manager", "head of sales",
+                 "vp of sales", "vp sales", "vice president of sales", "sales director", "director of sales",
+                 "chief revenue officer", "re:\\bcro\\b", "sales lead", "founding sales", "first sales",
+                 "sales executive", "outbound", "lead generation", "demand generation", "growth marketing",
+                 "growth marketer", "revenue operations", "revops", "sales operations"]
+
+signals:
+  # ---------------- A: explicit intent ----------------
+  1:  {name: Looking for an agency, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: ["{seek}", ["agency", "agencies", "firm", "service", "partner", "provider", "company"], "{offer_terms}"]}}
+  2:  {name: Looking for a lead-generation company, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: ["{seek}", ["lead generation", "lead gen", "leadgen", "lead-gen", "b2b leads"]]}}
+  3:  {name: Looking for an outbound agency, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: ["{seek}", ["outbound", "cold email", "cold outreach", "cold calling", "cold call", "email outreach"], "{provider}"]}}
+  4:  {name: Looking for appointment setters, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: ["{seek}", ["appointment setter", "appointment setters", "appointment setting", "appointment-setting", "meeting setter", "booking meetings for"]]}}
+  5:  {name: Looking for an SDR agency, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {any: ["outsourced sdr", "outsourced sdrs", "sdr as a service", "sdr agency", "outsource our sdr",
+                     "outsourcing sdr", "fractional sdr", "outsourced bdr", "outsource sdr", "outsource bdr",
+                     "rent an sdr", "sdr outsourcing"]}}
+  6:  {name: Asking for software recommendations, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["what tool", "which tool", "best tool", "best software", "what software", "which software",
+                         "recommend a tool", "tool recommendation", "what do you use for", "what are you using for",
+                         "best crm", "best platform", "which platform"], "{tool_terms}"]}}
+  7:  {name: Requesting vendor recommendations, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["can anyone recommend", "vendor recommendation", "recommend a vendor", "recommend a company",
+                         "recommend an agency", "looking for a vendor", "any recommendations for", "who would you recommend",
+                         "who do you recommend"], "{offer_terms}"]}}
+  8:  {name: Asking for pricing, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["how much", "what does it cost", "cost", "pricing", "price", "charge", "rates", "retainer",
+                         "per meeting", "per lead", "budget"], "{offer_terms}", "{provider}"]}}
+  9:  {name: Comparing service providers, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["re:\\bvs\\.?\\b", "versus", "which is better", "which agency", "compare", "comparing",
+                         "or should i"], "{offer_terms}"]}}
+  10: {name: Asking for alternatives to a competitor, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["alternative to", "alternatives to", "switching from", "switch from", "replace",
+                         "replacement for", "instead of", "moving away from", "leave", "leaving"], "{competitors}"]}}
+
+  # ---------------- B: pain ----------------
+  11: {name: Struggling to generate leads, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["struggling to get leads", "struggling to generate leads", "struggling with leads",
+                     "struggling to find clients", "struggling to get clients", "no leads", "not getting leads",
+                     "need more leads", "can't get leads", "cant get leads", "lead generation is hard",
+                     "dry pipeline", "empty pipeline", "pipeline is dry", "pipeline is empty", "not enough leads",
+                     "how do i get clients", "how to get clients", "can't find clients", "cant find clients",
+                     "getting clients is hard", "zero leads", "leads dried up", "where do you find clients"]}}
+  12: {name: Not booking enough meetings, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["not booking meetings", "no meetings booked", "not enough meetings", "few meetings",
+                     "book more meetings", "book more calls", "no sales calls", "calendar is empty",
+                     "no demos", "not booking demos", "booking meetings is hard", "can't book meetings",
+                     "cant book meetings", "struggling to book", "no one books", "nobody books"]}}
+  13: {name: Poor outbound email performance, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["cold email not working", "cold emails not working", "cold email isn't working",
+                     "cold emails aren't working", "low reply rate", "no replies", "zero replies",
+                     "nobody replies", "no one replies", "reply rate dropped", "reply rates dropped",
+                     "open rate dropped", "open rates dropped", "outbound isn't working", "outbound is not working",
+                     "outbound not working", "cold outreach not working", "0 replies", "1% reply rate"]}}
+  14: {name: Low email deliverability, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["going to spam", "goes to spam", "landing in spam", "deliverability", "emails in spam",
+                     "domain reputation", "inbox placement", "blacklisted", "spam folder", "emails bouncing",
+                     "high bounce rate"]}}
+  15: {name: High customer acquisition cost, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["cac too high", "cac is too high", "high cac", "customer acquisition cost",
+                     "cost per lead too high", "cost per lead is too high", "cost per acquisition",
+                     "ads too expensive", "ads are too expensive", "paid ads not working", "ad costs",
+                     "facebook ads not working", "google ads not working", "burning money on ads"]}}
+  16: {name: Sales team underperforming, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["not hitting quota", "missing quota", "missed quota", "reps underperforming",
+                     "sales team underperforming", "sdrs not performing", "sales team struggling",
+                     "my sales team", "our sales team is", "sdr isn't performing", "sales hire didn't work",
+                     "fired our sdr", "fired my sdr", "fired our sales"]}}
+  17: {name: Poor lead quality, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["bad leads", "poor lead quality", "lead quality", "junk leads", "unqualified leads",
+                     "low quality leads", "leads are garbage", "leads are trash", "tire kickers"]}}
+  18: {name: Too dependent on referrals, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["rely on referrals", "relying on referrals", "all from referrals", "only referrals",
+                     "referrals dried up", "word of mouth only", "mostly referrals", "beyond referrals",
+                     "all our clients come from referrals", "all my clients come from referrals",
+                     "only get clients through referrals", "100% referrals", "outside of referrals"]}}
+  19: {name: Existing agency not delivering, group: churn, status: full, kinds: [post, comment],
+       match: {all_of: [["fired our", "fired my", "not delivering", "isn't delivering", "waste of money", "scam",
+                         "no results", "didn't deliver", "did not deliver", "burned by", "ripped off",
+                         "got burned", "zero results", "0 meetings", "paid an agency", "hired an agency"],
+                        ["agency", "lead gen", "lead generation", "appointment setting", "outbound", "sdr",
+                         "cold email", "freelancer"]]}}
+  20: {name: Looking to scale sales operations, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {any: ["scale outbound", "scale our sales", "scaling sales", "scale our outbound", "scale sales",
+                     "build a sales team", "build an outbound", "building an outbound", "first sales hire",
+                     "scale lead generation", "grow our pipeline", "build outbound", "set up outbound",
+                     "start outbound", "starting outbound", "build a sales process", "hire our first sdr",
+                     "hire my first sdr", "hire our first sales"]}}
+
+  # ---------------- C/D: competitor and creator engagement ----------------
+  21: {name: Comments on competitor post, group: competitor, status: partial, built: false, kinds: [], note: "LinkedIn, semi-manual weekly"}
+  22: {name: Engages with competitor case study, group: competitor, status: partial, built: false, kinds: [], note: "LinkedIn, semi-manual weekly"}
+  23: {name: Engages with competitor offer, group: competitor, status: partial, built: false, kinds: [], note: "LinkedIn, semi-manual weekly"}
+  24: {name: Mentions competitor, group: competitor, status: full, kinds: [post, comment],
+       match: {any: ["{competitors}"]}}
+  25: {name: Complains about competitor, group: churn, status: full, kinds: [post, comment, review],
+       match: {all_of: ["{competitors}", "{negative_words}"]}}
+  26: {name: Asks competitor questions, group: competitor, status: full, kinds: [post, comment],
+       match: {all_of: ["{competitors}", ["how do i", "anyone use", "anyone used", "has anyone", "is it worth",
+                                          "worth it", "any experience", "thoughts on", "review", "legit"]]}}
+  27: {name: Comments on industry posts, group: community, status: partial, kinds: [comment],
+       match: {all_of: ["{industry_terms}", ["we ", "our ", "i run", "my agency", "my company", "my business"]]}}
+  28: {name: Shares industry insights, group: community, status: partial, built: false, kinds: [], note: "LinkedIn search coverage only"}
+  29: {name: Asks questions about a solution, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["how do", "how to", "should i", "is it worth", "does anyone", "what's the best",
+                         "what is the best", "does it work", "do they work", "is it legit"], "{offer_terms}"]}}
+  30: {name: Engages with case studies, group: competitor, status: partial, built: false, kinds: [], note: "LinkedIn, semi-manual weekly"}
+  31: {name: Discusses a relevant business problem, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["{pain_terms}"]}}
+
+  # ---------------- E: hiring ----------------
+  32: {name: Hiring SDRs, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["re:\\bsdrs?\\b", "sales development"]}}
+  33: {name: Hiring BDRs, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["re:\\bbdrs?\\b", "business development representative", "business development rep"]}}
+  34: {name: Hiring appointment setters, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["appointment setter", "appointment setting", "meeting setter"]}}
+  35: {name: Hiring sales managers, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["sales manager", "head of sales", "director of sales", "sales director", "vp of sales",
+                           "vp sales", "vice president of sales", "chief revenue officer", "re:\\bcro\\b",
+                           "founding account executive", "first account executive", "sales lead"]}}
+  36: {name: Hiring demand-generation managers, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["demand generation", "demand gen"]}}
+  37: {name: Hiring growth marketers, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["growth marketing", "growth marketer", "growth manager", "head of growth", "growth lead"]}}
+  38: {name: Hiring sales development leaders, group: hiring, status: full, kinds: [job],
+       match: {title_any: ["head of sales development", "sdr manager", "bdr manager", "sales development manager",
+                           "director of sales development", "sales development lead"]}}
+  39: {name: Hiring recruitment agencies, group: hiring, status: partial, kinds: [job, tender],
+       match: {any: ["recruiting partner", "recruitment partner", "recruitment agency", "staffing agency",
+                     "recruitment services", "staffing services"]}}
+  40: {name: Multiple sales vacancies, group: hiring, status: full, kinds: [job], match: {computed: multi_sales_roles}}
+  41: {name: Opening a new sales department, group: hiring, status: partial, kinds: [job], match: {computed: first_sales_leader}}
+
+  # ---------------- F: funding and deals ----------------
+  42: {name: Pre-seed funding, group: funding, status: full, kinds: [news, filing],
+       match: {any: ["pre-seed", "preseed", "pre seed"], computed_any: [form_d_small]}}
+  43: {name: Seed funding, group: funding, status: full, kinds: [news, filing, launch],
+       match: {any: ["seed round", "seed funding", "seed financing", "seed investment", "re:\\bseed\\b.{0,40}\\b(round|funding|raise)",
+                     "re:\\braises?\\b.{0,60}\\bseed\\b"], computed_any: [form_d_small, yc_batch]}}
+  44: {name: Series A, group: funding, status: full, kinds: [news], match: {any: ["series a"]}}
+  45: {name: Series B or later, group: funding, status: full, kinds: [news], match: {any: ["series b", "series c", "series d", "series e"]}}
+  46: {name: New investment announcement, group: funding, status: full, kinds: [news, filing],
+       match: {any: ["raises", "raised", "secures funding", "secures $", "closes $", "funding round", "lands $",
+                     "investment from", "secured funding", "announces funding", "re:\\braises \\$"], computed_any: [form_d]}}
+  47: {name: Venture capital backing, group: funding, status: full, kinds: [news, filing],
+       match: {all_of: [["led by", "participation from", "backed by", "ventures", "capital"], ["raises", "funding", "round", "investment"]]}}
+  48: {name: Acquisition, group: funding, status: full, kinds: [news, filing],
+       match: {any: ["acquires", "acquired by", "acquisition of", "to acquire"], computed_any: [8k_2_01]}}
+  49: {name: Merger, group: funding, status: full, kinds: [news], match: {any: ["merger", "merges with", "to merge"]}}
+  50: {name: New strategic partnership, group: expansion, status: full, kinds: [news],
+       match: {any: ["partners with", "partnership with", "strategic partnership", "teams up with", "joins forces"]}}
+  51: {name: Major contract announcement, group: expansion, status: full, kinds: [news, filing],
+       match: {any: ["awarded contract", "wins contract", "signs agreement", "awarded a", "selected by",
+                     "multi-year contract", "lands contract"], computed_any: [8k_1_01]}}
+
+  # ---------------- G: leadership ----------------
+  52: {name: New CEO, group: leadership, status: partial, kinds: [news, filing],
+       match: {all_of: ["{appoint}", ["ceo", "chief executive"]], computed_any: [8k_5_02]}}
+  53: {name: New founder, group: leadership, status: partial, kinds: [news],
+       match: {any: ["co-founder joins", "launches new startup", "founded by former", "new venture from"]}}
+  54: {name: New VP Sales, group: leadership, status: partial, kinds: [news],
+       match: {all_of: ["{appoint}", ["vp of sales", "vice president of sales", "vp sales", "chief revenue officer",
+                                       "head of sales", "chief sales officer", "sales leader"]]}}
+  55: {name: New CMO, group: leadership, status: partial, kinds: [news],
+       match: {all_of: ["{appoint}", ["chief marketing officer", "re:\\bcmo\\b", "vp of marketing", "head of marketing"]]}}
+  56: {name: New Head of Growth, group: leadership, status: partial, kinds: [news],
+       match: {all_of: ["{appoint}", ["head of growth", "vp of growth", "chief growth officer"]]}}
+  57: {name: Founder joins a new company, group: leadership, status: partial, kinds: [news],
+       match: {all_of: [["founder", "co-founder"], ["joins", "to lead", "appointed", "named"]]}}
+  58: {name: Executive changes company, group: leadership, status: partial, kinds: [news, filing],
+       match: {all_of: [["departs", "steps down", "resigns", "leaves", "departure", "exits"],
+                        ["ceo", "cfo", "coo", "cto", "president", "chief", "vp"]], computed_any: [8k_5_02]}}
+  59: {name: Executive promoted, group: leadership, status: partial, kinds: [news],
+       match: {any: ["promoted to", "promotes", "elevated to", "elevates"]}}
+  60: {name: New department head, group: leadership, status: partial, kinds: [news],
+       match: {all_of: ["{appoint}", ["head of", "director of"]]}}
+  61: {name: New decision-maker appointed, group: leadership, status: partial, kinds: [news, filing],
+       match: {all_of: ["{appoint}", ["chief", "vp", "vice president", "president", "head of", "director", "managing director"]],
+               computed_any: [8k_5_02]}}
+
+  # ---------------- H: growth ----------------
+  62: {name: Entering a new market, group: expansion, status: full, kinds: [news, website],
+       match: {any: ["enters", "expands into", "launches in", "entering the", "expansion into", "new market"], computed_any: [new_locale]}}
+  63: {name: Opening a new office, group: expansion, status: full, kinds: [news],
+       match: {any: ["opens office", "new office", "opens new office", "opens headquarters", "new headquarters", "opens hub"]}}
+  64: {name: Expanding internationally, group: expansion, status: full, kinds: [news, job, website],
+       match: {any: ["expands to", "international expansion", "expands internationally", "global expansion",
+                     "enters the us", "enters the uk", "launches in europe", "launches in the uk", "launches in the us"],
+               computed_any: [new_job_country, new_locale]}}
+  65: {name: Launching new products, group: launch, status: full, kinds: [news, launch, website],
+       match: {any: ["launches", "unveils", "introduces", "debuts", "announces launch", "now available"], computed_any: [launch_listing, new_product_page]}}
+  66: {name: Increasing headcount, group: expansion, status: full, kinds: [job], match: {computed: many_open_roles}}
+  67: {name: Expanding sales teams, group: hiring, status: full, kinds: [job], match: {computed: sales_roles_growing}}
+  68: {name: Opening new business locations, group: expansion, status: full, kinds: [news],
+       match: {any: ["opens new location", "new location", "opens store", "opens second location", "opens flagship"]}}
+  69: {name: Increasing marketing activity, group: website, status: partial, kinds: [website], match: {computed: blog_surge}}
+
+  # ---------------- I: technology ----------------
+  70: {name: Adopting a CRM, group: tech, status: partial, kinds: [website], match: {computed: tech_added_crm}}
+  71: {name: Switching CRM, group: tech, status: partial, kinds: [website, job],
+       match: {any: ["migrating to", "migration from", "migrate from"], computed_any: [tech_switch_crm]}}
+  72: {name: Adopting marketing automation, group: tech, status: partial, kinds: [website], match: {computed: tech_added_marketing_automation}}
+  73: {name: Replacing sales software, group: tech, status: partial, kinds: [website], match: {computed: tech_switch_sales}}
+  74: {name: Adopting a sales engagement platform, group: tech, status: partial, kinds: [website], match: {computed: tech_added_sales_engagement}}
+  75: {name: Implementing AI tools, group: tech, status: partial, kinds: [website], match: {computed: tech_added_ai_chat}}
+  76: {name: Removing a competitor's technology, group: tech, status: full, kinds: [website], match: {computed: tech_removed_watched}}
+  77: {name: Adding new analytics tools, group: tech, status: full, kinds: [website], match: {computed: tech_added_analytics}}
+
+  # ---------------- J: website ----------------
+  78: {name: New website launch, group: website, status: full, kinds: [website, launch], match: {computed: new_website}}
+  79: {name: Website redesign, group: website, status: full, kinds: [website], match: {computed: redesign}}
+  80: {name: New landing page, group: website, status: full, kinds: [website], match: {computed: new_landing_page}}
+  81: {name: New pricing page, group: website, status: full, kinds: [website], match: {computed: new_pricing_page}}
+  82: {name: New service offering, group: website, status: full, kinds: [website], match: {computed: new_service_page}}
+  83: {name: New product page, group: website, status: full, kinds: [website], match: {computed: new_product_page}}
+  84: {name: Website conversion problems publicly discussed, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["landing page not converting", "low conversion rate", "website not converting", "site isn't converting",
+                     "no conversions", "conversion rate is low", "traffic but no sales", "traffic but no leads"]}}
+  85: {name: New advertising campaigns, group: website, status: partial, built: false, kinds: [], note: "Ad libraries: undocumented endpoints, add later"}
+  86: {name: New content marketing strategy, group: website, status: full, kinds: [website], match: {computed: blog_surge}}
+
+  # ---------------- K: procurement ----------------
+  87: {name: Publishing an RFP, group: procurement, status: full, kinds: [tender], match: {computed: tender}}
+  88: {name: Publishing a vendor request, group: procurement, status: full, kinds: [tender], match: {computed: tender_rfi}}
+  89: {name: Seeking outsourcing partners, group: explicit_intent, status: full, kinds: [post, comment, tender],
+       match: {any: ["outsource sales", "outsource our sales", "outsourcing sales", "outsource lead generation",
+                     "outsource outbound", "outsource appointment setting", "outsourced sales", "outsource our outbound",
+                     "outsource cold email", "outsource prospecting"]}}
+  90: {name: Seeking consultants, group: explicit_intent, status: full, kinds: [post, comment, tender],
+       match: {all_of: [["looking for a consultant", "need a consultant", "hire a consultant", "looking for a fractional",
+                         "need a fractional", "hire a fractional", "looking for an advisor"],
+                        ["sales", "growth", "marketing", "revenue", "gtm", "go-to-market", "outbound", "lead"]]}}
+  91: {name: Requesting service proposals, group: procurement, status: full, kinds: [tender], match: {computed: tender}}
+
+  # ---------------- L: content intent ----------------
+  92: {name: Reviewing vendor alternatives, group: churn, status: full, kinds: [post, comment],
+       match: {all_of: [["evaluating alternatives", "looking at alternatives", "shopping around", "considering switching",
+                         "thinking of switching", "time to switch", "thinking about switching"], "{offer_or_competitors}"]}}
+  93: {name: Asking how to solve a business problem, group: pain, status: full, kinds: [post, comment],
+       match: {any: ["how do i get more leads", "how to get more leads", "how to book more meetings", "how to get more clients",
+                     "how do you get clients", "how to find customers", "how do i find customers", "how to get b2b clients",
+                     "how do b2b companies get clients", "how do you find clients", "how to land clients",
+                     "how do i land clients", "how to get my first clients", "how to get first customers"]}}
+  94: {name: Comparing competing solutions, group: proxy, status: proxy, built: false, kinds: [], note: "Demand only (autocomplete); not a named buyer"}
+  95: {name: Publishing a case study request, group: explicit_intent, status: full, kinds: [post, comment],
+       match: {all_of: [["case studies", "case study", "show me results", "proof of results", "track record", "real results"], "{offer_terms}"]}}
+
+  # ---------------- M: churn ----------------
+  96: {name: Negative reviews of an existing provider, group: churn, status: full, kinds: [review], match: {computed: low_rating}}
+  97: {name: Complaints about customer support, group: churn, status: full, kinds: [post, comment, review],
+       match: {all_of: ["{competitors}", ["support is terrible", "bad support", "no support", "customer service",
+                                           "support team", "never responded", "ghosted", "no response", "unresponsive"]]}}
+  98: {name: Complaints about poor results, group: churn, status: full, kinds: [post, comment, review],
+       match: {all_of: ["{competitors}", ["no results", "waste of money", "zero results", "didn't work", "did not work",
+                                           "no roi", "scam", "no meetings", "0 meetings", "no leads"]]}}
+  99: {name: Publicly announcing cancellation, group: churn, status: full, kinds: [post, comment, review],
+       match: {all_of: [["we cancelled", "we canceled", "cancelled our", "canceled our", "we switched from", "we left",
+                         "we fired", "ended our contract", "stopped using", "cancelled my", "canceled my"], "{offer_or_competitors}"]}}
+  100: {name: Asking for alternatives, group: churn, status: full, kinds: [post, comment],
+        match: {all_of: [["alternative to", "alternatives to", "alternative for", "similar to", "something like",
+                          "replacement for", "cheaper than"], "{offer_or_competitors}"]}}
+  101: {name: Reporting recurring service failures, group: churn, status: full, kinds: [post, comment, review],
+        match: {all_of: ["{competitors}", ["again", "keeps", "every time", "constantly", "repeatedly", "still broken", "third time", "second time"]]}}
+
+  # ---------------- N: community ----------------
+  102: {name: Asking for recommendations in a community, group: explicit_intent, status: full, kinds: [post, comment],
+        match: {all_of: [["any recommendations", "recommendations for", "can anyone recommend", "who do you recommend",
+                          "who do you use", "who would you recommend", "suggestions for"], "{offer_or_tools}"]}}
+  103: {name: Asking technical implementation questions, group: community, status: full, kinds: [post, comment],
+        match: {all_of: [["how do i set up", "how to set up", "setting up", "configure", "warm up", "warmup", "dkim",
+                          "spf", "dmarc", "sequence", "integrate", "connect"], "{tool_terms}"]}}
+  104: {name: Looking for business partners, group: community, status: full, kinds: [post, comment],
+        match: {any: ["white label partner", "white-label partner", "white label agency", "white-label agency",
+                      "partner agency", "referral partner", "agency partner", "looking for a partner to"]}}
+  105: {name: Seeking a specialist or contractor, group: explicit_intent, status: full, kinds: [post, comment],
+        match: {all_of: [["looking for a freelancer", "need a freelancer", "hire a freelancer", "need a contractor",
+                          "looking for a contractor", "looking for an expert", "need an expert", "hire an expert",
+                          "looking for someone to", "need someone to", "looking for someone who", "[hiring]", "[task]"],
+                         "{offer_or_tools}"]}}
+
+  # ---------------- O: timing ----------------
+  106: {name: New company formation, group: new_company, status: partial, kinds: [filing, launch],
+        match: {computed_any: [form_d_small, new_company_listing, yc_batch]}}
+  107: {name: New product launch, group: launch, status: full, kinds: [launch, news], match: {computed_any: [launch_listing]}}
+  108: {name: First sales hire, group: hiring, status: full, kinds: [job], match: {computed: first_sales_hire}}
+  109: {name: New geographic expansion, group: expansion, status: full, kinds: [job, news],
+        match: {any: ["expands to", "expands into", "launches in", "opens in"], computed_any: [new_job_country]}}
+  110: {name: Seasonal business demand, group: proxy, status: proxy, built: false, kinds: [], note: "Demand only (pageviews); not a named buyer"}
+  111: {name: Contract renewal approaching, group: timing, status: partial, built: false, kinds: [], note: "Government contracts only; add for gov-selling clients"}
+  112: {name: New fiscal-year budget announcements, group: timing, status: partial, kinds: [news],
+        match: {any: ["fiscal year budget", "increased marketing budget", "budget increase", "new budget", "increases budget"]}}
+  113: {name: New strategic initiative, group: timing, status: full, kinds: [news],
+        match: {any: ["launches initiative", "strategic plan", "new initiative", "transformation program", "strategic initiative"]}}
+  114: {name: Major organizational restructuring, group: timing, status: full, kinds: [news, filing],
+        match: {any: ["layoffs", "lays off", "restructuring", "job cuts", "reorganization", "workforce reduction"], computed_any: [8k_2_05]}}
