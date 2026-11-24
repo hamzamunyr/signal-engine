@@ -66,7 +66,20 @@ GUIDE = (
     "resolution_confidence: high = company name and domain stated; medium = company name stated or clearly "
     "inferable; low = only a vague description; unresolved = no company. employee_estimate: use clues such as "
     "funding stage (pre-seed/seed usually 1-10 or 11-50), 'solo founder', 'my small agency', number of open roles. "
-    "Score intent 9 or 10 only when the text itself shows a buyer actively looking for or needing this kind of service now."
+    "Score intent 9 or 10 only when the text itself shows a buyer actively looking for or needing this kind of service now.\n"
+    "Examples (learn the pattern, do not copy):\n"
+    "A) 'Looking for an outbound agency that has booked meetings for IT MSPs. Founder of a 12-person MSP in Ohio.' -> "
+    "is_lead true, intent 9, explicit_intent, US, 11-50, can_sell yes.\n"
+    "B) 'I help B2B founders book 20 meetings a month with cold email. DM me.' -> is_lead false: seller of the same service, "
+    "intent 1, can_sell no.\n"
+    "C) 'Cloudflare is hiring a Senior SDR in Austin.' -> is_lead false: large company (1000+), has its own team, intent 3, can_sell no.\n"
+    "D) 'Our referrals dried up and we have no outbound. 3 of us run a bookkeeping firm for dental practices.' -> "
+    "is_lead true, intent 8, pain, can_sell yes.\n"
+    "E) 'We fired our lead gen agency, they booked junk meetings. Looking for someone better.' -> is_lead true, intent 9, churn.\n"
+    "F) Generic advice, motivational posts, tool promotions, affiliate/CPL lead buying for consumer verticals (solar, insurance, "
+    "SSDI, home improvement) -> is_lead false, intent 1-3, can_sell no.\n"
+    "G) Partnership calls from agencies wanting white-label lead gen partners -> is_lead false unless they ask to hire a provider "
+    "for their own pipeline."
 )
 
 
@@ -151,8 +164,10 @@ def push() -> dict:
         "id": f"{user}/{KERNEL_SLUG}", "title": KERNEL_SLUG, "code_file": "score.py", "language": "python",
         "kernel_type": "script", "is_private": True, "enable_gpu": True, "enable_tpu": False,
         "enable_internet": False, "dataset_sources": [], "competition_sources": [], "kernel_sources": [],
-        "model_sources": [MODEL_7B, MODEL_3B], "machine_shape": os.environ.get("KAGGLE_MACHINE", "NvidiaTeslaP100"),
+        "model_sources": [MODEL_7B, MODEL_3B],
     }
+    if os.environ.get("KAGGLE_MACHINE"):  # default (no shape) gets 2x T4 without queueing; P100 queued for hours
+        meta["machine_shape"] = os.environ["KAGGLE_MACHINE"]
     (work / "kernel-metadata.json").write_text(json.dumps(meta, indent=1))
     out = _kaggle("kernels", "push", "-p", str(work))
     log.info("pushed %d items: %s", len(batch), out.strip()[-300:])
@@ -272,7 +287,7 @@ def ingest(path: Path) -> dict:
         db.x("""update client_matches set llm_scored_at=now(), intent_score=%s, icp_fit_score=%s, employee_estimate=%s,
                 company_name=coalesce(nullif(%s,''), company_name), company_domain=coalesce(nullif(%s,''), company_domain),
                 resolution_confidence=%s, evidence_quote=%s, decision_maker_role=%s, recommended_angle=%s,
-                signal_ids=%s, trigger=coalesce(%s, trigger), priority=%s, reject_reason=%s,
+                signal_ids=%s, trigger=coalesce(%s, trigger), priority=%s, reject_reason=%s, llm_json=%s::jsonb,
                 queue=case when queue='lane_a' and %s='rejected' then 'rejected'
                            when queue='lane_a' and exported_at is not null then queue else %s end
                 where id=%s""",
@@ -280,7 +295,7 @@ def ingest(path: Path) -> dict:
               (d.get("company_name") or "")[:200] if d.get("company_name") not in (None, "null") else "",
               (d.get("company_domain") or "")[:200] if d.get("company_domain") not in (None, "null") else "",
               d.get("resolution_confidence"), (d.get("evidence_quote") or "")[:500], d.get("decision_maker_role"),
-              (d.get("recommended_angle") or "")[:300], sig, d.get("trigger"), dec["priority"], dec["reject_reason"],
+              (d.get("recommended_angle") or "")[:300], sig, d.get("trigger"), dec["priority"], dec["reject_reason"], json.dumps(d),
               dec["queue"], dec["queue"], m["id"]))
         ok += 1
     log.info("ingested %d/%d results", ok, n)

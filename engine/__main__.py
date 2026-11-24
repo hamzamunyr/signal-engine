@@ -48,6 +48,9 @@ def main(argv: list[str]) -> int:
         kv = dict(zip(args[::2], args[1::2]))
         res = run(shard=int(kv.get("--shard", 0)), shards=int(kv.get("--shards", 1)),
                   limit=int(kv.get("--limit", 120)), minutes=float(kv.get("--minutes", 300)))
+    elif cmd == "score":
+        from .llm import push, wait_and_pull
+        res = {"push": push(), "pull": wait_and_pull()}
     elif cmd == "kaggle":
         from .llm import _kaggle
         print(_kaggle(*args, check=False))
