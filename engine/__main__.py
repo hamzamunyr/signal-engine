@@ -74,6 +74,13 @@ def main(argv: list[str]) -> int:
     elif cmd == "score":
         from .llm import push, wait_and_pull
         res = {"push": push(), "pull": wait_and_pull()}
+    elif cmd == "kstatus":
+        from .llm import _kaggle
+        from . import db
+        out = {k: _kaggle("kernels", "status", f"hamzamunyr/{k}", check=False)[-300:]
+               for k in ["signal-engine-scorer-0", "signal-engine-scorer-1", "signal-engine-scorer"]}
+        db.kv_set("kstatus", out)
+        res = out
     elif cmd == "kaggle":
         from .llm import _kaggle
         print(_kaggle(*args, check=False))
