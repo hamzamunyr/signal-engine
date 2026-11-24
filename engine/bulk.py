@@ -47,13 +47,21 @@ GTM_ROLE = re.compile(r"\b(sdr|bdr|sales|marketing|business development|appointm
 US_STATES = re.compile(r"\b(united states|usa|u\.s\.|remote - us|[A-Z]{2})\b")
 
 
-def _workable(errors: list[str], max_pages: int = 60) -> list[Item]:
+STATES = ["California", "Texas", "Florida", "New York", "Illinois", "Georgia", "North Carolina", "Arizona", "Colorado",
+          "Washington", "Massachusetts", "New Jersey", "Pennsylvania", "Ohio", "Virginia", "Tennessee", "Michigan",
+          "Utah", "Minnesota", "Maryland", "Missouri", "Indiana", "Oregon", "Nevada", "South Carolina", "Wisconsin"]
+STATE_QUERIES = ["sales", "marketing", "business development", "account executive", "lead generation"]
+
+
+def _workable(errors: list[str], max_pages: int = 60, states: bool = False) -> list[Item]:
     by_co: dict[str, dict] = {}
     sample_saved = False
-    for qy in WORKABLE_QUERIES:
+    combos = [(q, f"{st}, United States") for st in STATES for q in STATE_QUERIES] if states else \
+        [(q, "United States") for q in WORKABLE_QUERIES]
+    for qy, where_q in combos:
         token = None
         for _ in range(max_pages):
-            params = {"query": qy, "location": "United States"}
+            params = {"query": qy, "location": where_q}
             if token:
                 params["pageToken"] = token
             try:
@@ -98,6 +106,57 @@ def _workable(errors: list[str], max_pages: int = 60) -> list[Item]:
                           title=f"{d['name']} is hiring {len(roles)} outbound/sales role(s)", body=body,
                           company_name=d["name"], company_domain=_domain(d["website"]),
                           published_at=parse_date(d["created"]), meta={"roles": roles[:20], "location": where}))
+    return items
+
+
+def _boards(errors: list[str]) -> list[Item]:
+    """Remote job boards with free feeds: RemoteOK, We Work Remotely (sales & marketing), Himalayas."""
+    import feedparser
+    by_co: dict[str, dict] = {}
+
+    def add(name, website, title, loc, url, desc, date):
+        if not name or not GTM_ROLE.search(title or ""):
+            return
+        if loc and not re.search(r"(us|usa|united states|america|anywhere|worldwide|remote)", loc, re.I):
+            return
+        d = by_co.setdefault(name.lower(), {"name": name, "website": website, "roles": [], "desc": desc, "url": url,
+                                            "loc": loc, "date": date})
+        d["roles"].append(title)
+    try:
+        for j in http.json("https://remoteok.com/api", timeout=40)[1:]:
+            add(j.get("company"), None, j.get("position"), j.get("location"), j.get("url"),
+                clean_text(j.get("description"), 1200), j.get("date"))
+    except Exception as e:
+        errors.append(f"remoteok: {e}")
+    try:
+        r = http.get("https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss", timeout=40)
+        for e in feedparser.parse(r.content).entries:
+            co, _, title = (e.get("title") or "").partition(":")
+            add(co.strip(), None, title.strip(), e.get("region") or "", e.get("link"), clean_text(e.get("summary"), 1200),
+                e.get("published"))
+    except Exception as e:
+        errors.append(f"wwr: {e}")
+    for offset in range(0, 1000, 20):
+        try:
+            r = http.json("https://himalayas.app/jobs/api", params={"limit": 20, "offset": offset}, timeout=40)
+        except Exception as e:
+            errors.append(f"himalayas: {e}")
+            break
+        jobs = r.get("jobs") or []
+        for j in jobs:
+            locs = ", ".join(j.get("locationRestrictions") or [])
+            add(j.get("companyName"), None, j.get("title"), locs, j.get("applicationLink") or j.get("guid"),
+                clean_text(j.get("excerpt") or j.get("description"), 1200), j.get("pubDate"))
+        if len(jobs) < 20:
+            break
+    items = []
+    for key, d in by_co.items():
+        roles = sorted(set(d["roles"]))
+        items.append(Item(source="remote_boards", source_id=f"co_{key}"[:200], kind="job", url=d["url"],
+                          title=f"{d['name']} is hiring {len(roles)} outbound/sales/marketing role(s)",
+                          body=f"{d['name']} (remote, {d['loc'] or 'location not stated'}) has open roles: {'; '.join(roles[:8])}. "
+                               f"Excerpt: {d['desc']}", company_name=d["name"], company_domain=_domain(d["website"]),
+                          published_at=parse_date(str(d["date"])) if d["date"] else None, meta={"roles": roles[:20]}))
     return items
 
 
@@ -161,6 +220,10 @@ def run(sources: list[str]) -> dict:
     t0 = time.time()
     if "workable" in sources:
         items += _workable(errors)
+    if "workable_states" in sources:
+        items += [i for i in _workable(errors, max_pages=15, states=True)]
+    if "boards" in sources:
+        items += _boards(errors)
     if "reddit" in sources:
         items += _reddit(errors)
     if "hn" in sources:
@@ -168,14 +231,14 @@ def run(sources: list[str]) -> dict:
     # keep reddit/hn items that look like a buyer (cheap pre-filter; the LLM decides the rest)
     buyer = re.compile(r"(looking for|recommend|need (more|help)|how do (i|we) (get|find)|struggl|not working|dried up|"
                        r"hire|outsourc|agency|any advice|anyone (use|tried)|fired)", re.I)
-    items = [i for i in items if i.source == "workable" or buyer.search(i.text())]
+    items = [i for i in items if i.kind == "job" or buyer.search(i.text())]
     resolved = 0
     for it in items:
         if it.company_name and not it.company_domain:
             it.company_domain = _clearbit(it.company_name)
             resolved += bool(it.company_domain)
     ids = db.insert_items(items)
-    trig = {"workable": ("hiring", [32, 33, 34]), "reddit": ("pain", [1, 2, 3, 10]), "hn": ("pain", [1, 2, 3])}
+    trig = {"workable": ("hiring", [32, 33, 34]), "remote_boards": ("hiring", [32, 33, 34]), "reddit": ("pain", [1, 2, 3, 10]), "hn": ("pain", [1, 2, 3])}
     n = 0
     for iid in ids:
         src = db.q("select source from raw_items where id=%s", (iid,))[0]["source"]
