@@ -8,6 +8,9 @@ on:
       collect:
         type: boolean
         default: true
+      score:
+        type: boolean
+        default: true
 env:
   SUPABASE_REF: ${{ vars.SUPABASE_REF }}
   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -28,7 +31,7 @@ jobs:
       - run: python -m engine bulk ${{ inputs.sources }}
   score:
     needs: collect
-    if: ${{ always() }}
+    if: ${{ always() && inputs.score }}
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:

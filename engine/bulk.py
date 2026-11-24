@@ -27,7 +27,9 @@ WORKABLE_QUERIES = [
     "sales development representative", "business development representative", "appointment setter",
     "lead generation specialist", "cold caller", "outbound sales", "business development manager",
     "inside sales representative", "demand generation", "growth marketing manager", "account executive",
-    "sales manager", "head of sales", "client acquisition", "partnerships manager",
+    "sales manager", "head of sales", "client acquisition", "partnerships manager", "sales representative",
+    "business development", "marketing manager", "sales associate", "new business", "sales consultant",
+    "account manager", "marketing coordinator", "growth", "revenue operations", "sales director",
 ]
 SUBREDDITS = [
     "sales", "B2BSales", "b2b_sales", "SaaS", "startups", "Entrepreneur", "smallbusiness", "agency", "marketing",
@@ -36,20 +38,16 @@ SUBREDDITS = [
     "Emailmarketing", "AskMarketing", "ITManagers", "managedservices", "Bookkeeping", "Insurance", "realtors",
     "CommercialRealEstate", "architecture", "engineering", "freelance", "webdev", "marketingagency",
 ]
-INTENT_QUERIES = [
-    "lead generation agency", "outbound agency", "appointment setting", "need more clients", "need more leads",
-    "cold email not working", "how do I get clients", "referrals dried up", "pipeline", "hire an SDR",
-    "outsource sales", "book more meetings", "fired our agency", "recommend agency",
-]
+INTENT_QUERIES = ["agency", "leads", "clients", "outbound", "SDR", "pipeline", "appointment", "outsource", "referrals",
+                  "prospecting", "meetings"]
 HN_QUERIES = ["lead generation agency", "outbound agency", "how do I get customers", "cold email", "first customers B2B",
               "hire SDR", "appointment setting", "sales agency"]
-GTM_ROLE = re.compile(r"\b(sdr|bdr|sales development|business development|appointment|lead gen|cold call|outbound|"
-                      r"inside sales|demand gen|growth|account executive|sales manager|head of sales|client acquisition|"
-                      r"partnership)", re.I)
+GTM_ROLE = re.compile(r"(sdr|bdr|sales|marketing|business development|appointment|lead gen|cold call|outbound|demand gen|"
+                      r"growth|revenue|account (executive|manager)|client acquisition|partnership|new business)", re.I)
 US_STATES = re.compile(r"\b(united states|usa|u\.s\.|remote - us|[A-Z]{2})\b")
 
 
-def _workable(errors: list[str], max_pages: int = 25) -> list[Item]:
+def _workable(errors: list[str], max_pages: int = 60) -> list[Item]:
     by_co: dict[str, dict] = {}
     sample_saved = False
     for qy in WORKABLE_QUERIES:
@@ -118,7 +116,7 @@ def _reddit(errors: list[str], days: int = 90) -> list[Item]:
         for qy in INTENT_QUERIES:
             try:
                 r = http.json("https://arctic-shift.photon-reddit.com/api/posts/search",
-                              params={"subreddit": sub, "query": qy, "after": after, "limit": 100}, timeout=40, retries=0)
+                              params={"subreddit": sub, "query": qy, "after": time.strftime("%Y-%m-%d", time.gmtime(after)), "limit": 100}, timeout=40, retries=0)
                 out.extend(_post_item(d) for d in r.get("data") or [] if d.get("id"))
             except Exception as e:
                 errors.append(f"reddit {sub}/{qy}: {str(e)[:80]}")
