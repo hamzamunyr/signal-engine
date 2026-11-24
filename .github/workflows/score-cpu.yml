@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
     inputs:
       limit: { description: "Items per shard", default: "60" }
-concurrency: { group: engine-cpu-score, cancel-in-progress: false }
+      shard_list: { description: "JSON list of shards to run", default: "[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]" }
+concurrency: { group: "engine-cpu-score-${{ inputs.shard_list }}", cancel-in-progress: false }
 env:
   SUPABASE_REF: ${{ vars.SUPABASE_REF }}
   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -17,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+        shard: ${{ fromJSON(inputs.shard_list) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
