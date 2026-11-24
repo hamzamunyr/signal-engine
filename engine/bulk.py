@@ -42,7 +42,7 @@ INTENT_QUERIES = ["agency", "leads", "clients", "outbound", "SDR", "pipeline", "
                   "prospecting", "meetings"]
 HN_QUERIES = ["lead generation agency", "outbound agency", "how do I get customers", "cold email", "first customers B2B",
               "hire SDR", "appointment setting", "sales agency"]
-GTM_ROLE = re.compile(r"(sdr|bdr|sales|marketing|business development|appointment|lead gen|cold call|outbound|demand gen|"
+GTM_ROLE = re.compile(r"\b(sdr|bdr|sales|marketing|business development|appointment|lead gen|cold call|outbound|demand gen|"
                       r"growth|revenue|account (executive|manager)|client acquisition|partnership|new business)", re.I)
 US_STATES = re.compile(r"\b(united states|usa|u\.s\.|remote - us|[A-Z]{2})\b")
 
