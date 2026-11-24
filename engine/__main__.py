@@ -53,6 +53,21 @@ def main(argv: list[str]) -> int:
         from pathlib import Path
         rows = db.q(Path(args[0]).read_text())
         res = {"rows": len(rows or [])}
+    elif cmd == "probe":
+        import requests
+        UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"}
+        for u in ["https://clutch.co/agencies/lead-generation", "https://clutch.co/profile/belkins",
+                  "https://autocomplete.clearbit.com/v1/companies/suggest?query=Ten%20Forward%20Consulting",
+                  "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=sales&query=agency&after=2026-09-01&limit=5",
+                  "https://jobs.workable.com/api/v1/jobs?query=sales%20development&location=United%20States",
+                  "https://www.goodfirms.co/lead-generation-services", "https://www.g2.com/products/belkins/reviews",
+                  "https://www.upcity.com/profiles/belkins"]:
+            try:
+                r = requests.get(u, headers=UA, timeout=30)
+                print(r.status_code, len(r.text), u, r.text[:160].replace("\n", " "))
+            except Exception as e:
+                print("ERR", u, e)
+        res = {}
     elif cmd == "score":
         from .llm import push, wait_and_pull
         res = {"push": push(), "pull": wait_and_pull()}
