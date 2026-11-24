@@ -285,3 +285,33 @@ def ingest(path: Path) -> dict:
         ok += 1
     log.info("ingested %d/%d results", ok, n)
     return {"ingested": ok, "lines": n}
+
+
+def smoke(machine: str = "") -> dict:
+    """Push a tiny GPU test kernel and wait for it, to see whether Kaggle runs GPU jobs at all."""
+    user = os.environ.get("KAGGLE_USERNAME") or "hamzamunyr"
+    work = ROOT / "build" / "smoke"
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    (work / "smoke.py").write_text("import subprocess,torch;print(subprocess.run(['nvidia-smi'],capture_output=True,text=True).stdout);print('cuda',torch.cuda.is_available(),torch.cuda.device_count())\n")
+    meta = {"id": f"{user}/gpu-smoke-test", "title": "gpu-smoke-test", "code_file": "smoke.py", "language": "python",
+            "kernel_type": "script", "is_private": True, "enable_gpu": True, "enable_internet": False,
+            "dataset_sources": [], "competition_sources": [], "kernel_sources": [], "model_sources": []}
+    if machine:
+        meta["machine_shape"] = machine
+    (work / "kernel-metadata.json").write_text(json.dumps(meta))
+    print(_kaggle("kernels", "push", "-p", str(work), check=False))
+    t0 = time.time()
+    st = ""
+    while time.time() - t0 < 1200:
+        st = _kaggle("kernels", "status", f"{user}/gpu-smoke-test", check=False)
+        print(int(time.time() - t0), st.strip()[-160:])
+        if any(k in st.lower() for k in ("complete", "error", "cancel")):
+            break
+        time.sleep(30)
+    out = work / "out"
+    out.mkdir()
+    print(_kaggle("kernels", "output", f"{user}/gpu-smoke-test", "-p", str(out), check=False)[-500:])
+    for f in out.glob("*.log"):
+        print(f.read_text()[-3000:])
+    return {"status": st.strip()[-200:]}

@@ -48,6 +48,13 @@ def main(argv: list[str]) -> int:
         kv = dict(zip(args[::2], args[1::2]))
         res = run(shard=int(kv.get("--shard", 0)), shards=int(kv.get("--shards", 1)),
                   limit=int(kv.get("--limit", 120)), minutes=float(kv.get("--minutes", 300)))
+    elif cmd == "kaggle":
+        from .llm import _kaggle
+        print(_kaggle(*args, check=False))
+        res = {}
+    elif cmd == "kaggle-smoke":
+        from .llm import smoke
+        res = smoke(machine=(args[0] if args else ""))
     elif cmd == "health":
         from .maintenance import health_report
         print(health_report())
