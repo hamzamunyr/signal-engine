@@ -1,8 +1,8 @@
-name: score on CPU (manual only; 3B model too weak to judge intent)
+name: score on CPU (Qwen 7B, 20 parallel runners)
 on:
   workflow_dispatch:
     inputs:
-      limit: { description: "Items per shard", default: "100" }
+      limit: { description: "Items per shard", default: "60" }
 concurrency: { group: engine-cpu-score, cancel-in-progress: false }
 env:
   SUPABASE_REF: ${{ vars.SUPABASE_REF }}
@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,8 +27,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: qwen25-3b-q4km
-      - run: python -m engine score-cpu --shard ${{ matrix.shard }} --shards 4 --limit ${{ inputs.limit || '100' }} --minutes 300
+          key: qwen25-7b-q4km
+      - run: python -m engine score-cpu --shard ${{ matrix.shard }} --shards 20 --limit ${{ inputs.limit || '100' }} --minutes 300
   export:
     needs: score
     if: always()

@@ -20,8 +20,8 @@ from .llm import SYSTEM, ingest, select_batch
 
 log = logging.getLogger("cpu_llm")
 
-REPO = os.environ.get("CPU_MODEL_REPO", "Qwen/Qwen2.5-3B-Instruct-GGUF")
-FILE = os.environ.get("CPU_MODEL_FILE", "qwen2.5-3b-instruct-q4_k_m.gguf")
+REPO = os.environ.get("CPU_MODEL_REPO", "bartowski/Qwen2.5-7B-Instruct-GGUF")
+FILE = os.environ.get("CPU_MODEL_FILE", "Qwen2.5-7B-Instruct-Q4_K_M.gguf")
 
 
 def _model_path() -> str:
