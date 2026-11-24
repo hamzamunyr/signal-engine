@@ -111,7 +111,7 @@ signals:
 score_threshold: 6.0       # LLM priority needed to reach the sheet
 min_intent: 8              # only leads the LLM scores 8+ for intent
 leads_per_day: 40          # most rows to add to the sheet per day
-llm_daily_cap: 700         # most items sent to the LLM per day
+llm_daily_cap: 1000
 outreach_channel: linkedin   # LinkedIn first for now; email later
 output:
   sheet: true
