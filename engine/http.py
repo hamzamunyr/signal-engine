@@ -32,6 +32,7 @@ HOST_INTERVAL = {
     "www.trustpilot.com": 4.0,
     "api.ted.europa.eu": 1.0,
     "dns.google": 0.1,
+    "jobs.workable.com": 1.5,
 }
 DEFAULT_INTERVAL = 0.5
 NO_RETRY_HOSTS = {"www.linkedin.com", "linkedin.com"}
