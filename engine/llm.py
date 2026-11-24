@@ -24,7 +24,9 @@ from .util import now_utc
 
 log = logging.getLogger("llm")
 
-KERNEL_SLUG = os.environ.get("KAGGLE_KERNEL_SLUG", "signal-engine-scorer")
+SHARDS = int(os.environ.get("LLM_SHARDS", "1"))
+SHARD = int(os.environ.get("LLM_SHARD", "0"))
+KERNEL_SLUG = os.environ.get("KAGGLE_KERNEL_SLUG", "signal-engine-scorer") + (f"-{SHARD}" if SHARDS > 1 else "")
 MODEL_7B = os.environ.get("KAGGLE_MODEL", "qwen-lm/qwen2.5/transformers/7b-instruct/1")
 MODEL_3B = os.environ.get("KAGGLE_MODEL_SMALL", "qwen-lm/qwen2.5/transformers/3b-instruct/1")
 SIZE_ORDER = ["1-10", "11-50", "51-200", "201-1000", "1000+"]
@@ -78,6 +80,10 @@ GUIDE = (
     "E) 'We fired our lead gen agency, they booked junk meetings. Looking for someone better.' -> is_lead true, intent 9, churn.\n"
     "F) Generic advice, motivational posts, tool promotions, affiliate/CPL lead buying for consumer verticals (solar, insurance, "
     "SSDI, home improvement) -> is_lead false, intent 1-3, can_sell no.\n"
+    "H) 'Acme Consulting (Austin, TX) has 2 open roles: Appointment Setter; SDR' and the ad shows a small B2B service firm -> "
+    "is_lead true, intent 8, hiring, can_sell yes (done-for-you outbound replaces or speeds up that hire). "
+    "If the ad shows a large or well-known company (enterprise, 500+ staff, public) -> intent 3, can_sell no. "
+    "Consumer-facing sales jobs (solar, insurance door-to-door, retail, car sales) -> is_lead false.\n"
     "G) Partnership calls from agencies wanting white-label lead gen partners -> is_lead false unless they ask to hire a provider "
     "for their own pipeline."
 )
@@ -128,9 +134,10 @@ def select_batch() -> list[dict]:
             select m.id as mid, m.signal_ids, r.* from client_matches m join raw_items r on r.id = m.item_id
             where m.client=%s and m.llm_scored_at is null and m.queue in ('new','lane_a')
               and m.created_at > now() - interval '5 days'
+              and m.id %% %s = %s
             order by case m.trigger when 'explicit_intent' then 0 when 'churn' then 1 when 'pain' then 2
                                     when 'hiring' then 3 when 'leadership' then 4 when 'funding' then 5 else 6 end,
-                     m.rule_score desc, m.id desc limit %s""", (c.name, cap))
+                     m.rule_score desc, m.id desc limit %s""", (c.name, SHARDS, SHARD, cap))
         for r in rows:
             out.append({"mid": r["mid"], "client": c.name, "prompt": build_prompt(c.cfg, r, r["signal_ids"])})
     return out

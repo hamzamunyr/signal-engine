@@ -13,8 +13,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 PAYLOAD = "__PAYLOAD__"
 TIME_BUDGET = 150 * 60  # seconds; stop early so output is always saved
-BATCH = 8
-MAX_NEW = 320
+BATCH = 16
+MAX_NEW = 260
 
 t0 = time.time()
 data = json.loads(gzip.decompress(base64.b64decode(PAYLOAD)))

@@ -53,6 +53,9 @@ def main(argv: list[str]) -> int:
         from pathlib import Path
         rows = db.q(Path(args[0]).read_text())
         res = {"rows": len(rows or [])}
+    elif cmd == "bulk":
+        from .bulk import run
+        res = run(args or ["workable", "reddit", "hn"])
     elif cmd == "probe":
         import requests
         UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"}
